@@ -39,7 +39,7 @@ export default function CreateExamPage() {
       const data = await response.json();
       setRubric(JSON.stringify(data.rubric, null, 2));
     } catch (err) {
-      setError(err.message || 'Something went wrong');
+      setError(err instanceof Error ? err.message : 'Something went wrong');
     } finally {
       setIsGenerating(false);
     }
@@ -77,8 +77,8 @@ export default function CreateExamPage() {
       
       // Redirect to exams list
       router.push('/exams');
-    } catch (err: any) {
-      setError(err.message || 'Something went wrong');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong');
     } finally {
       setIsGenerating(false);
     }
