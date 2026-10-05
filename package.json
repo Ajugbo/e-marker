@@ -6,6 +6,7 @@
     "packages/*"
   ],
   "scripts": {
+    "build": "npm run build --workspace @exam-marker/web",
     "dev:web": "npm run dev --workspace @exam-marker/web",
     "dev:mobile": "npm run start --workspace mobile",
     "db:push": "npm run db:push --workspace @exam-marker/database",
