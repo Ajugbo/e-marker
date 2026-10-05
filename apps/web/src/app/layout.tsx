@@ -19,8 +19,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en">
       <body>
-        <div className="min-h-screen lg:grid lg:grid-cols-[248px_minmax(0,1fr)]">
-          <aside className="flex flex-col border-b border-ink/10 bg-white px-5 py-5 lg:min-h-screen lg:border-b-0 lg:border-r lg:px-6 lg:py-8">
+        <div className="min-h-screen lg:grid lg:grid-cols-[248px_minmax(0,1fr)] print:block print:min-h-0">
+          <aside className="flex flex-col border-b border-ink/10 bg-white px-5 py-5 lg:min-h-screen lg:border-b-0 lg:border-r lg:px-6 lg:py-8 print:hidden">
             <Link href="/" className="flex items-center gap-3">
               <span className="grid h-10 w-10 place-items-center rounded-lg bg-forest text-sm font-bold text-white">EM</span>
               <span>
@@ -46,7 +46,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
               <p className="mt-1">Teacher administration</p>
             </div>
           </aside>
-          <main className="min-w-0 px-5 py-7 sm:px-8 lg:px-12 lg:py-10">{children}</main>
+          <main className="min-w-0 px-5 py-7 sm:px-8 lg:px-12 lg:py-10 print:px-0 print:py-0">{children}</main>
         </div>
       </body>
     </html>

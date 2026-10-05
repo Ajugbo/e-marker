@@ -91,6 +91,14 @@ export default function ExamsPage() {
                   Rubric Preview: {exam.rubricJson.substring(0, 100)}...
                 </p>
               </div>
+              <div className="mt-4 flex justify-end">
+                <Link
+                  href={`/exams/${exam.id}/results`}
+                  className="rounded-md border border-forest px-3 py-2 text-sm font-semibold text-forest transition-colors hover:bg-mint"
+                >
+                  View Results
+                </Link>
+              </div>
             </div>
           ))}
         </div>
