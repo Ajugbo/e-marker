@@ -1,0 +1,30 @@
+{
+  "name": "@exam-marker/web",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "predev": "npm run build --workspace @exam-marker/database",
+    "dev": "next dev",
+    "prebuild": "npm run build --workspace @exam-marker/database",
+    "build": "next build",
+    "start": "next start",
+    "test:db": "node --test tests/test-db.test.mjs"
+  },
+  "dependencies": {
+    "@exam-marker/database": "*",
+    "next": "^14.2.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tesseract.js": "^6.0.1",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "@types/react": "^18.3.20",
+    "@types/react-dom": "^18.3.6",
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.3",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.8.3"
+  }
+}

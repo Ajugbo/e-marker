@@ -1,0 +1,91 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  name          String
+  role          String    @default("teacher")
+  credits       Int       @default(50)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  exams         Exam[]
+  transactions  CreditTransaction[]
+  reviewedGrades Grade[]   @relation("ReviewedBy")
+  
+  @@map("users")
+}
+
+model Exam {
+  id                  String    @id @default(uuid())
+  title               String
+  description         String?
+  rubricJson          String
+  creatorId           String
+  totalCreditsDeducted Int      @default(0)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  
+  creator             User      @relation(fields: [creatorId], references: [id])
+  scripts             Script[]
+  
+  @@map("exams")
+}
+
+model Script {
+  id              String    @id @default(uuid())
+  examId          String
+  studentName     String
+  matricNumber    String
+  class           String
+  totalPages      Int       @default(0)
+  status          String    @default("pending")
+  extractedText   String?
+  rawImages       String?
+  videoUri        String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  exam            Exam      @relation(fields: [examId], references: [id])
+  grade           Grade?
+  
+  @@map("scripts")
+}
+
+model Grade {
+  id              String    @id @default(uuid())
+  scriptId        String    @unique
+  questionScores  String
+  totalScore      Float
+  aiConfidence    Float
+  reviewedBy      String?
+  isApproved      Boolean   @default(false)
+  feedback        String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  script          Script    @relation(fields: [scriptId], references: [id])
+  reviewer        User?     @relation("ReviewedBy", fields: [reviewedBy], references: [id])
+  
+  @@map("grades")
+}
+
+model CreditTransaction {
+  id          String    @id @default(uuid())
+  userId      String
+  amount      Int
+  type        String
+  description String
+  createdAt   DateTime  @default(now())
+  
+  user        User      @relation(fields: [userId], references: [id])
+  
+  @@map("credit_transactions")
+}
