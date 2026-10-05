@@ -1,0 +1,14 @@
+{
+  "name": "exam-marker",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:web": "npm run dev --workspace @exam-marker/web",
+    "dev:mobile": "npm run start --workspace mobile",
+    "db:push": "npm run db:push --workspace @exam-marker/database",
+    "db:generate": "npm run db:generate --workspace @exam-marker/database"
+  }
+}

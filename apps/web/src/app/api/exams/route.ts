@@ -1,59 +1,86 @@
+import { NextResponse } from "next/server";
 import { prisma } from "@exam-marker/database";
-import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { getRequestUser } from "@/lib/auth";
-import { ApiError, errorResponse, readJsonBody } from "@/lib/http";
 
 export const dynamic = "force-dynamic";
 
-const rubricSchema = z
-  .union([z.string().min(2), z.record(z.string(), z.unknown()), z.array(z.unknown())])
-  .refine((rubric) => {
-    if (typeof rubric !== "string") return true;
+const createExamSchema = z.object({
+  title: z.string().trim().min(1, "Title is required").max(160),
+  rubricJson: z.string().min(2, "rubricJson is required").refine((value) => {
     try {
-      JSON.parse(rubric);
+      JSON.parse(value);
       return true;
     } catch {
       return false;
     }
-  }, "Rubric must be valid JSON");
-
-const createExamSchema = z.object({
-  title: z.string().trim().min(1).max(160),
-  description: z.string().trim().max(2000).optional(),
-  rubric: rubricSchema,
+  }, "rubricJson must contain valid JSON"),
 });
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    const user = await getRequestUser(request);
-    if (!user) throw new ApiError("Please sign in to continue", 401);
     const exams = await prisma.exam.findMany({
-      where: { creatorId: user.id },
       orderBy: { createdAt: "desc" },
-      include: { _count: { select: { scripts: true } } },
+      select: {
+        id: true,
+        title: true,
+        createdAt: true,
+        rubricJson: true,
+      },
     });
     return NextResponse.json({ exams });
   } catch (error) {
-    return errorResponse(error, "exams/get");
+    console.error("[api:exams/get] Failed to fetch exams", error);
+    return NextResponse.json({ error: "Failed to fetch exams" }, { status: 500 });
   }
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   try {
-    const user = await getRequestUser(request);
-    if (!user) throw new ApiError("Please sign in to continue", 401);
-    const data = await readJsonBody(request, createExamSchema);
-    const exam = await prisma.exam.create({
-      data: {
-        title: data.title,
-        description: data.description || null,
-        rubricJson: typeof data.rubric === "string" ? data.rubric : JSON.stringify(data.rubric),
-        creator: { connect: { id: user.id } },
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch (error) {
+      console.error("[api:exams/post] Invalid JSON request body", error);
+      return NextResponse.json({ error: "Request body must be valid JSON" }, { status: 400 });
+    }
+
+    const parsed = createExamSchema.safeParse(body);
+    if (!parsed.success) {
+      console.error("[api:exams/post] Request validation failed", parsed.error.issues);
+      return NextResponse.json(
+        { error: parsed.error.issues[0]?.message ?? "Invalid request body" },
+        { status: 400 },
+      );
+    }
+
+    const testUserId = "test-user-id";
+    await prisma.user.upsert({
+      where: { id: testUserId },
+      update: {},
+      create: {
+        id: testUserId,
+        email: "test-user@example.com",
+        name: "Test User",
       },
     });
-    return NextResponse.json({ exam }, { status: 201 });
+
+    const exam = await prisma.exam.create({
+      data: {
+        title: parsed.data.title,
+        rubricJson: parsed.data.rubricJson,
+        creatorId: testUserId,
+      },
+    });
+
+    return NextResponse.json(
+      { message: "Exam created successfully", examId: exam.id },
+      { status: 201 },
+    );
   } catch (error) {
-    return errorResponse(error, "exams/post");
+    console.error("[api:exams/post] Failed to create exam", error);
+    return NextResponse.json(
+      { error: "Failed to create exam" },
+      { status: 500 },
+    );
   }
 }

@@ -1,3 +1,4 @@
+import Link from "next/link";
 const metrics = [
   { label: "Active exams", value: "08", note: "Across 4 classes", color: "bg-mint" },
   { label: "Scripts received", value: "246", note: "This term", color: "bg-[#f9e5d9]" },
@@ -20,9 +21,9 @@ export default function DashboardPage() {
           <h1 className="mt-2 text-3xl font-semibold text-ink">Good morning</h1>
           <p className="mt-2 text-sm text-ink/60">Here is the grading activity across your workspace.</p>
         </div>
-        <button className="w-fit rounded-md bg-forest px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#17483c]">
+        <Link href="/exams/new" className="w-fit rounded-md bg-forest px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#17483c] inline-block">
           Create an exam <span aria-hidden="true" className="ml-2">+</span>
-        </button>
+        </Link>
       </header>
 
       <section aria-label="Workspace metrics" className="grid gap-px overflow-hidden rounded-lg border border-ink/10 bg-ink/10 sm:grid-cols-2 xl:grid-cols-4">

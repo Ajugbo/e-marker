@@ -12,6 +12,7 @@ const navigation = [
   ["Exams", "/exams", "02"],
   ["Scripts", "/scripts", "03"],
   ["Credits", "/credits", "04"],
+  ["Review", "/review", "05"],
 ] as const;
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
