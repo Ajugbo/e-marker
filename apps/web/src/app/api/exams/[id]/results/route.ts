@@ -33,6 +33,11 @@ export async function GET(
         matricNumber: true,
         class: true,
         status: true,
+        reviewStatus: true,
+        adjustmentPoints: true,
+        adjustmentReason: true,
+        adjustedBy: true,
+        adjustedAt: true,
         extractedText: true,
         score: true,
         feedback: true,
@@ -42,8 +47,13 @@ export async function GET(
 
     const submissions = scripts.map(({ grade, extractedText, ...script }) => {
       const score = script.score ?? grade?.totalScore ?? null;
+      const reviewStatus = script.reviewStatus === "PENDING"
+        && (script.status === "graded" || grade !== null)
+        ? "GRADED"
+        : script.reviewStatus;
       return {
         ...script,
+        reviewStatus,
         score,
         feedback: script.feedback ?? grade?.feedback ?? null,
         canAutoGrade: Boolean(extractedText)

@@ -47,20 +47,29 @@ export async function processScriptFile(scriptId: string, userId: string) {
   const paths = storedPaths(script).filter(isUploadPath);
   try {
     let extractedText: string;
+    let needsReview = false;
     const imagePath = paths.find((path) => /\.(png|jpe?g|webp|bmp|tiff?)$/i.test(path));
     if (imagePath) {
       const { recognize } = await import("tesseract.js");
       const result = await recognize(imagePath, "eng");
       extractedText = result.data.text.trim() || "No readable text was detected in this image.";
+      needsReview = !result.data.text.trim() || result.data.confidence < 60;
     } else if (paths.length > 0) {
       extractedText = "Upload received. OCR for video and PDF files is mocked in this demo; frame extraction is not configured.";
+      needsReview = true;
     } else {
       throw new ApiError("The uploaded file is no longer available. Please upload it again.", 400);
     }
 
     const updated = await prisma.script.update({
       where: { id: scriptId },
-      data: { extractedText, status: "processed", videoUri: null, rawImages: null },
+      data: {
+        extractedText,
+        status: "processed",
+        reviewStatus: needsReview ? "AWAITING_REVIEW" : undefined,
+        videoUri: null,
+        rawImages: null,
+      },
     });
     await Promise.all(paths.map((path) => unlink(path).catch(() => undefined)));
     return updated;

@@ -47,6 +47,11 @@ model Script {
   class           String
   totalPages      Int       @default(0)
   status          String    @default("pending")
+  reviewStatus    ReviewStatus @default(PENDING)
+  adjustmentPoints Int      @default(0)
+  adjustmentReason String?
+  adjustedBy      String?
+  adjustedAt      DateTime? @default(now())
   extractedText   String?
   score           Int?
   feedback        String?
@@ -90,4 +95,11 @@ model CreditTransaction {
   user        User      @relation(fields: [userId], references: [id])
   
   @@map("credit_transactions")
+}
+
+enum ReviewStatus {
+  PENDING
+  GRADED
+  AWAITING_REVIEW
+  REVIEWED
 }

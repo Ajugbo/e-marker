@@ -16,6 +16,13 @@ const gradingResultSchema = z.object({
 const systemPrompt =
   "You are an examiner. Grade this answer against the rubric. Return JSON ONLY: { score: number, feedback: string }";
 
+function hasUncertainContent(content: string | null) {
+  return Boolean(
+    content?.includes("No readable text was detected")
+    || content?.includes("OCR for video and PDF files is mocked"),
+  );
+}
+
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } },
@@ -33,6 +40,16 @@ export async function POST(
     });
     if (!script) throw new ApiError("Script not found", 404);
     if (script.grade || script.status === "graded") {
+      if (script.reviewStatus === "PENDING") {
+        await prisma.script.update({
+          where: { id: script.id },
+          data: {
+            reviewStatus: hasUncertainContent(script.extractedText)
+              ? "AWAITING_REVIEW"
+              : "GRADED",
+          },
+        });
+      }
       return NextResponse.json({
         score: script.score ?? script.grade?.totalScore ?? null,
         feedback: script.feedback ?? script.grade?.feedback ?? null,
@@ -41,6 +58,11 @@ export async function POST(
     if (!script.extractedText) {
       throw new ApiError("Process the script before grading", 400);
     }
+    const reviewStatus =
+      script.reviewStatus === "AWAITING_REVIEW"
+      || hasUncertainContent(script.extractedText)
+        ? "AWAITING_REVIEW"
+        : "GRADED";
     if (!process.env.GROQ_API_KEY) {
       throw new ApiError("GROQ_API_KEY is not configured", 500);
     }
@@ -136,6 +158,7 @@ export async function POST(
           where: { id: script.id },
           data: {
             status: "graded",
+            reviewStatus,
             score: result.data.score,
             feedback: result.data.feedback,
           },
