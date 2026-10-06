@@ -48,6 +48,8 @@ model Script {
   totalPages      Int       @default(0)
   status          String    @default("pending")
   extractedText   String?
+  score           Int?
+  feedback        String?
   rawImages       String?
   videoUri        String?
   createdAt       DateTime  @default(now())

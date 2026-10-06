@@ -33,14 +33,24 @@ export async function GET(
         matricNumber: true,
         class: true,
         status: true,
-        grade: { select: { totalScore: true } },
+        extractedText: true,
+        score: true,
+        feedback: true,
+        grade: { select: { totalScore: true, feedback: true } },
       },
     });
 
-    const submissions = scripts.map(({ grade, ...script }) => ({
-      ...script,
-      score: grade?.totalScore ?? null,
-    }));
+    const submissions = scripts.map(({ grade, extractedText, ...script }) => {
+      const score = script.score ?? grade?.totalScore ?? null;
+      return {
+        ...script,
+        score,
+        feedback: script.feedback ?? grade?.feedback ?? null,
+        canAutoGrade: Boolean(extractedText)
+          && score === null
+          && !["graded", "grading"].includes(script.status),
+      };
+    });
 
     return NextResponse.json({ exam, submissions });
   } catch (error) {

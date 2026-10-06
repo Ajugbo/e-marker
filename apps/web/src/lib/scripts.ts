@@ -4,7 +4,6 @@ import { tmpdir } from "node:os";
 import { randomUUID } from "node:crypto";
 import { prisma } from "@exam-marker/database";
 import { ApiError } from "@/lib/http";
-import { createMockGrade } from "@/lib/grading";
 
 const uploadDirectory = join(tmpdir(), "exam-marker-uploads");
 
@@ -71,15 +70,13 @@ export async function processScriptFile(scriptId: string, userId: string) {
   }
 }
 
-export async function processAndGradeScript(scriptId: string, userId: string) {
+export async function processUploadedScript(scriptId: string, userId: string) {
   try {
-    const script = await processScriptFile(scriptId, userId);
-    if (script.status === "processing" || script.status === "failed") return;
-    await createMockGrade(scriptId, userId);
+    await processScriptFile(scriptId, userId);
   } catch (error) {
     console.error(`[script-pipeline:${scriptId}]`, error);
     await prisma.script.updateMany({
-      where: { id: scriptId, status: { not: "graded" } },
+      where: { id: scriptId, status: { notIn: ["graded", "grading"] } },
       data: { status: "failed" },
     });
   }

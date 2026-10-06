@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 
 interface Exam {
@@ -16,6 +16,8 @@ interface Submission {
   class: string;
   status: string;
   score: number | null;
+  feedback: string | null;
+  canAutoGrade: boolean;
 }
 
 interface ResultsResponse {
@@ -30,35 +32,52 @@ export default function ExamResultsPage({ params }: { params: { id: string } }) 
   const [printDate, setPrintDate] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [gradingScriptId, setGradingScriptId] = useState<string | null>(null);
+  const [gradeError, setGradeError] = useState('');
+
+  const fetchResults = useCallback(async (signal?: AbortSignal) => {
+    try {
+      const response = await fetch(`/api/exams/${params.id}/results`, { signal });
+      const data = (await response.json()) as ResultsResponse;
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to load exam results.');
+      }
+
+      setExam(data.exam ?? null);
+      setSubmissions(Array.isArray(data.submissions) ? data.submissions : []);
+      setPrintDate(new Date().toLocaleDateString());
+      setError('');
+    } catch (err) {
+      if (!signal?.aborted) {
+        setError(err instanceof Error ? err.message : 'Failed to load exam results.');
+      }
+    } finally {
+      if (!signal?.aborted) setLoading(false);
+    }
+  }, [params.id]);
 
   useEffect(() => {
     const controller = new AbortController();
-
-    const fetchResults = async () => {
-      try {
-        const response = await fetch(`/api/exams/${params.id}/results`, {
-          signal: controller.signal,
-        });
-        const data = (await response.json()) as ResultsResponse;
-        if (!response.ok) {
-          throw new Error(data.error || 'Failed to load exam results.');
-        }
-
-        setExam(data.exam ?? null);
-        setSubmissions(Array.isArray(data.submissions) ? data.submissions : []);
-        setPrintDate(new Date().toLocaleDateString());
-      } catch (err) {
-        if (!controller.signal.aborted) {
-          setError(err instanceof Error ? err.message : 'Failed to load exam results.');
-        }
-      } finally {
-        if (!controller.signal.aborted) setLoading(false);
-      }
-    };
-
-    void fetchResults();
+    void fetchResults(controller.signal);
     return () => controller.abort();
-  }, [params.id]);
+  }, [fetchResults]);
+
+  const autoGrade = async (scriptId: string) => {
+    setGradingScriptId(scriptId);
+    setGradeError('');
+    try {
+      const response = await fetch(`/api/scripts/${scriptId}/grade`, { method: 'POST' });
+      const data = (await response.json()) as { error?: string };
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to grade script.');
+      }
+      await fetchResults();
+    } catch (err) {
+      setGradeError(err instanceof Error ? err.message : 'Failed to grade script.');
+    } finally {
+      setGradingScriptId(null);
+    }
+  };
 
   if (loading) {
     return <p className="py-12 text-center text-ink/60 print:hidden">Loading results...</p>;
@@ -142,6 +161,7 @@ export default function ExamResultsPage({ params }: { params: { id: string } }) 
               <th scope="col" className="px-5 py-3 font-semibold print:px-2 print:py-2">Matric Number</th>
               <th scope="col" className="px-5 py-3 font-semibold print:px-2 print:py-2">Class</th>
               <th scope="col" className="px-5 py-3 font-semibold print:px-2 print:py-2">Score</th>
+              <th scope="col" className="px-5 py-3 font-semibold print:px-2 print:py-2">Feedback</th>
               <th scope="col" className="px-5 py-3 font-semibold print:px-2 print:py-2">Status</th>
             </tr>
           </thead>
@@ -162,6 +182,9 @@ export default function ExamResultsPage({ params }: { params: { id: string } }) 
                       ? '-'
                       : submission.score.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                   </td>
+                  <td className="max-w-md px-5 py-3 text-ink/70 print:px-2 print:py-2">
+                    {submission.feedback || '-'}
+                  </td>
                   <td className="px-5 py-3 print:px-2 print:py-2">
                     <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold print:px-0 print:py-0 ${
                       graded
@@ -170,12 +193,22 @@ export default function ExamResultsPage({ params }: { params: { id: string } }) 
                     }`}>
                       {status}
                     </span>
+                    {submission.canAutoGrade && (
+                      <button
+                        type="button"
+                        onClick={() => void autoGrade(submission.id)}
+                        disabled={gradingScriptId !== null}
+                        className="mt-2 block rounded-md bg-forest px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#17483c] disabled:cursor-wait disabled:opacity-60 print:hidden"
+                      >
+                        {gradingScriptId === submission.id ? 'Grading...' : '🤖 Auto-Grade'}
+                      </button>
+                    )}
                   </td>
                 </tr>
               );
             }) : (
               <tr>
-                <td colSpan={5} className="px-5 py-10 text-center text-ink/55 print:px-2 print:py-6">
+                <td colSpan={6} className="px-5 py-10 text-center text-ink/55 print:px-2 print:py-6">
                   No submissions for this exam yet.
                 </td>
               </tr>
@@ -183,6 +216,11 @@ export default function ExamResultsPage({ params }: { params: { id: string } }) 
           </tbody>
         </table>
       </div>
+      {gradeError && (
+        <p role="alert" className="rounded-md border border-coral/30 bg-white p-4 text-sm text-coral print:hidden">
+          {gradeError}
+        </p>
+      )}
     </section>
   );
 }

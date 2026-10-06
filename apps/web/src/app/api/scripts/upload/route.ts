@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getRequestUser } from "@/lib/auth";
 import { ApiError, errorResponse } from "@/lib/http";
-import { processAndGradeScript, saveUpload } from "@/lib/scripts";
+import { processUploadedScript, saveUpload } from "@/lib/scripts";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    void processAndGradeScript(script.id, exam.creatorId);
+    void processUploadedScript(script.id, exam.creatorId);
     return NextResponse.json({ id: script.id, status: script.status }, { status: 201 });
   } catch (error) {
     if (savedPath) await unlink(savedPath).catch(() => undefined);
