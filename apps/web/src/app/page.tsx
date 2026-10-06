@@ -1,4 +1,15 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
+
+function getGreeting(hour: number) {
+  if (hour >= 5 && hour < 12) return "Good morning";
+  if (hour >= 12 && hour < 17) return "Good afternoon";
+  if (hour >= 17 && hour < 21) return "Good evening";
+  return "Good night";
+}
+
 const metrics = [
   { label: "Active exams", value: "08", note: "Across 4 classes", color: "bg-mint" },
   { label: "Scripts received", value: "246", note: "This term", color: "bg-[#f9e5d9]" },
@@ -13,12 +24,20 @@ const activity = [
 ];
 
 export default function DashboardPage() {
+  const [greeting, setGreeting] = useState<string | null>(null);
+
+  useEffect(() => {
+    setGreeting(getGreeting(new Date().getHours()));
+  }, []);
+
   return (
     <div className="mx-auto max-w-6xl">
       <header className="flex flex-col justify-between gap-5 border-b border-ink/10 pb-7 sm:flex-row sm:items-end">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-forest">Monday, October 5, 2026</p>
-          <h1 className="mt-2 text-3xl font-semibold text-ink">Good morning</h1>
+          <h1 className="mt-2 min-h-9 text-3xl font-semibold text-ink" aria-live="polite">
+            {greeting ?? "\u00a0"}
+          </h1>
           <p className="mt-2 text-sm text-ink/60">Here is the grading activity across your workspace.</p>
         </div>
         <Link href="/exams/new" className="w-fit rounded-md bg-forest px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#17483c] inline-block">

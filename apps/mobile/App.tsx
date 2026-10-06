@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
+import { theme } from './src/constants/theme';
 
 // Import screens (placeholder for now)
 import ScanScreen from './src/screens/ScanScreen';
@@ -36,10 +37,10 @@ export default function App() {
                 }
                 return <Ionicons name={iconName} size={size} color={color} />;
               },
-              tabBarActiveTintColor: '#2563eb',
+              tabBarActiveTintColor: theme.colors.primary,
               tabBarInactiveTintColor: 'gray',
               headerStyle: {
-                backgroundColor: '#2563eb',
+                backgroundColor: theme.colors.primary,
               },
               headerTintColor: '#fff',
               headerTitleStyle: {

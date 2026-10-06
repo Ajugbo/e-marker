@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, Button } from 'react-native';
+import { theme } from '../constants/theme';
 
 export default function AccountScreen() {
   return (
@@ -7,7 +8,7 @@ export default function AccountScreen() {
       <Text style={styles.title}>Account</Text>
       <Text style={styles.subtitle}>Credits: 50</Text>
       <View style={styles.buttonContainer}>
-        <Button title="Buy Credits" onPress={() => {}} color="#2563eb" />
+        <Button title="Buy Credits" onPress={() => {}} color={theme.colors.primary} />
       </View>
     </View>
   );

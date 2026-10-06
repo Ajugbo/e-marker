@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import { theme } from '../constants/theme';
 
 const API_BASE_URL = (process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000').replace(/\/$/, '');
 const POLL_INTERVAL_MS = 2000;
@@ -129,7 +130,7 @@ export default function ScanScreen() {
   return (
     <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
       <View style={styles.header}>
-        <Text style={styles.title}>Exam Marker</Text>
+        <Text style={styles.title}>E-Marker</Text>
         <Text style={styles.subtitle}>Record a script for grading</Text>
       </View>
 
@@ -138,7 +139,7 @@ export default function ScanScreen() {
           <CameraView ref={cameraRef} style={styles.camera} facing="back" mode="video" videoQuality="720p" />
         ) : (
           <View style={styles.permissionPrompt}>
-            <Ionicons name="videocam" size={44} color="#2563eb" />
+            <Ionicons name="videocam" size={44} color={theme.colors.primary} />
             <Text style={styles.cameraText}>Camera access needed</Text>
             <TouchableOpacity onPress={() => void requestPermission()} style={styles.permissionButton}>
               <Text style={styles.permissionButtonText}>Allow camera</Text>
@@ -251,7 +252,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 9,
     borderRadius: 8,
-    backgroundColor: '#2563eb',
+    backgroundColor: theme.colors.primary,
   },
   permissionButtonText: {
     color: '#fff',
@@ -279,7 +280,7 @@ const styles = StyleSheet.create({
   scanButton: {
     width: '100%',
     height: 56,
-    backgroundColor: '#2563eb',
+    backgroundColor: theme.colors.primary,
     borderRadius: 11,
     flexDirection: 'row',
     justifyContent: 'center',

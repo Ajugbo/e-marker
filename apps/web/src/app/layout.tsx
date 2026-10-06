@@ -3,7 +3,7 @@ import Link from "next/link";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Exam Marker | Dashboard",
+  title: "E-Marker | Dashboard",
   description: "Exam grading operations dashboard",
 };
 
@@ -24,7 +24,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             <Link href="/" className="flex items-center gap-3">
               <span className="grid h-10 w-10 place-items-center rounded-lg bg-forest text-sm font-bold text-white">EM</span>
               <span>
-                <span className="block text-sm font-bold text-ink">Exam Marker</span>
+                <span className="block text-sm font-bold text-ink">E-Marker</span>
                 <span className="block text-xs text-ink/55">Grading workspace</span>
               </span>
             </Link>
@@ -42,7 +42,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
               ))}
             </nav>
             <div className="mt-auto hidden border-t border-ink/10 pt-5 text-xs text-ink/45 lg:block">
-              <p>Exam Marker</p>
+              <p>E-Marker</p>
               <p className="mt-1">Teacher administration</p>
             </div>
           </aside>

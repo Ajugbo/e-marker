@@ -5,6 +5,7 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        primary: "#2563eb",
         ink: "#172521",
         forest: "#1f594b",
         mint: "#d8eee5",

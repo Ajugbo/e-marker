@@ -148,7 +148,7 @@ export default function ExamResultsPage({ params }: { params: { id: string } }) 
       </header>
 
       <header className="hidden print:mb-5 print:block">
-        <p className="text-xs font-semibold uppercase">Exam Marker | Results</p>
+        <p className="text-xs font-semibold uppercase">E-Marker | Results</p>
         <h1 className="mt-1 text-2xl font-bold">{exam.title}</h1>
         <p className="mt-1 text-sm">Printed {printDate}</p>
       </header>

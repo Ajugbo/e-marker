@@ -2,20 +2,39 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { z } from 'zod';
+
+const examDetailsSchema = z.object({
+  institution: z.string().trim().min(1, 'Institution is required'),
+  courseSubject: z.string().trim().min(1, 'Course/Subject is required'),
+  classLevel: z.string().trim().min(1, 'Class/Level is required'),
+  sampleQuestions: z.string().trim().min(1, 'Sample questions are required'),
+});
+
+const examSubmissionSchema = z.object({
+  institution: z.string().trim().min(1, 'Institution is required'),
+  rubric: z.string().trim().min(2, 'Rubric/Mark Scheme is required'),
+});
 
 export default function CreateExamPage() {
   const router = useRouter();
-  const [title, setTitle] = useState('');
-  const [subject, setSubject] = useState('');
-  const [topic, setTopic] = useState('');
+  const [institution, setInstitution] = useState('');
+  const [courseSubject, setCourseSubject] = useState('');
+  const [classLevel, setClassLevel] = useState('');
   const [sampleQuestions, setSampleQuestions] = useState('');
   const [rubric, setRubric] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState('');
 
   const handleGenerateRubric = async () => {
-    if (!title || !subject || !topic || !sampleQuestions) {
-      setError('Please fill in all fields before generating rubric.');
+    const parsedDetails = examDetailsSchema.safeParse({
+      institution,
+      courseSubject,
+      classLevel,
+      sampleQuestions,
+    });
+    if (!parsedDetails.success) {
+      setError(parsedDetails.error.issues[0]?.message ?? 'Please complete all exam details.');
       return;
     }
 
@@ -27,10 +46,10 @@ export default function CreateExamPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title,
-          subject,
-          topic,
-          sampleQuestions,
+          title: parsedDetails.data.institution,
+          subject: parsedDetails.data.courseSubject,
+          topic: parsedDetails.data.classLevel,
+          sampleQuestions: parsedDetails.data.sampleQuestions,
         }),
       });
 
@@ -47,9 +66,10 @@ export default function CreateExamPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!rubric) {
-      setError('Please generate or enter a rubric before creating exam.');
+
+    const parsedSubmission = examSubmissionSchema.safeParse({ institution, rubric });
+    if (!parsedSubmission.success) {
+      setError(parsedSubmission.error.issues[0]?.message ?? 'Please complete the exam details.');
       return;
     }
 
@@ -61,8 +81,8 @@ export default function CreateExamPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title,
-          rubricJson: rubric,
+          title: parsedSubmission.data.institution,
+          rubricJson: parsedSubmission.data.rubric,
         }),
       });
 
@@ -98,26 +118,26 @@ export default function CreateExamPage() {
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Exam Title
+              Institution
             </label>
             <input
               type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              value={institution}
+              onChange={(e) => setInstitution(e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-forest focus:border-transparent"
-              placeholder="e.g., Algebra II - Midterm"
+              placeholder="e.g., Northview High School"
               required
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Subject
+              Course/Subject
             </label>
             <input
               type="text"
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
+              value={courseSubject}
+              onChange={(e) => setCourseSubject(e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-forest focus:border-transparent"
               placeholder="e.g., Mathematics"
               required
@@ -127,14 +147,14 @@ export default function CreateExamPage() {
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Topic / Chapter
+            Class/Level
           </label>
           <input
             type="text"
-            value={topic}
-            onChange={(e) => setTopic(e.target.value)}
+            value={classLevel}
+            onChange={(e) => setClassLevel(e.target.value)}
             className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-forest focus:border-transparent"
-            placeholder="e.g., Quadratic Equations"
+            placeholder="e.g., Year 10"
             required
           />
         </div>
@@ -158,15 +178,15 @@ export default function CreateExamPage() {
             type="button"
             onClick={handleGenerateRubric}
             disabled={isGenerating}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-semibold disabled:opacity-50"
+            className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 font-semibold disabled:opacity-50"
           >
-            {isGenerating ? 'Generating...' : '✨ Generate Rubric with AI'}
+            {isGenerating ? 'Generating...' : '✨ Rubric/Mark Scheme'}
           </button>
         </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Generated Rubric (JSON format — editable)
+            Rubric/Mark Scheme (JSON format — editable)
           </label>
           <textarea
             value={rubric}
