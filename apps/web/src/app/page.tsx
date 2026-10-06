@@ -25,16 +25,26 @@ const activity = [
 
 export default function DashboardPage() {
   const [greeting, setGreeting] = useState<string | null>(null);
+  const [currentDate, setCurrentDate] = useState<string | null>(null);
 
   useEffect(() => {
-    setGreeting(getGreeting(new Date().getHours()));
+    const now = new Date();
+    setGreeting(getGreeting(now.getHours()));
+    setCurrentDate(now.toLocaleDateString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    }));
   }, []);
 
   return (
     <div className="mx-auto max-w-6xl">
       <header className="flex flex-col justify-between gap-5 border-b border-primary/20 pb-7 sm:flex-row sm:items-end">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-forest">Monday, October 5, 2026</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-forest" suppressHydrationWarning>
+            {currentDate ?? "\u00a0"}
+          </p>
           <h1 className="mt-2 min-h-9 text-3xl font-semibold text-ink" aria-live="polite">
             {greeting ?? "\u00a0"}
           </h1>
