@@ -60,7 +60,7 @@ export default function ExamsPage() {
         <h1 className="text-3xl font-bold text-gray-900">Your Exams</h1>
         <Link 
           href="/exams/new" 
-          className="px-4 py-2 bg-forest text-white rounded-md hover:bg-[#17483c] transition-colors shadow-sm"
+          className="px-4 py-2 bg-primary text-white rounded-md hover:bg-blue-700 transition-colors shadow-sm"
         >
           + Create New Exam
         </Link>
@@ -74,7 +74,7 @@ export default function ExamsPage() {
       ) : (
         <div className="grid gap-4">
           {exams.map((exam) => (
-            <div key={exam.id} className="p-5 border border-gray-200 rounded-lg hover:shadow-md transition-shadow bg-white">
+            <div key={exam.id} className="p-5 border border-blue-200/70 rounded-lg hover:shadow-md transition-shadow bg-blue-50/60">
               <div className="flex justify-between items-start">
                 <div>
                   <h2 className="text-xl font-semibold text-gray-800">{exam.title}</h2>
@@ -94,7 +94,7 @@ export default function ExamsPage() {
               <div className="mt-4 flex justify-end">
                 <Link
                   href={`/exams/${exam.id}/results`}
-                  className="rounded-md border border-forest px-3 py-2 text-sm font-semibold text-forest transition-colors hover:bg-mint"
+                  className="rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700"
                 >
                   View Results
                 </Link>

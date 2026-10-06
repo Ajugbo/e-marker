@@ -32,7 +32,7 @@ export default function DashboardPage() {
 
   return (
     <div className="mx-auto max-w-6xl">
-      <header className="flex flex-col justify-between gap-5 border-b border-ink/10 pb-7 sm:flex-row sm:items-end">
+      <header className="flex flex-col justify-between gap-5 border-b border-primary/20 pb-7 sm:flex-row sm:items-end">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-forest">Monday, October 5, 2026</p>
           <h1 className="mt-2 min-h-9 text-3xl font-semibold text-ink" aria-live="polite">
@@ -40,14 +40,14 @@ export default function DashboardPage() {
           </h1>
           <p className="mt-2 text-sm text-ink/60">Here is the grading activity across your workspace.</p>
         </div>
-        <Link href="/exams/new" className="w-fit rounded-md bg-forest px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#17483c] inline-block">
+        <Link href="/exams/new" className="w-fit rounded-md bg-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 inline-block">
           Create an exam <span aria-hidden="true" className="ml-2">+</span>
         </Link>
       </header>
 
-      <section aria-label="Workspace metrics" className="grid gap-px overflow-hidden rounded-lg border border-ink/10 bg-ink/10 sm:grid-cols-2 xl:grid-cols-4">
+      <section aria-label="Workspace metrics" className="grid gap-px overflow-hidden rounded-lg border border-primary/15 bg-primary/15 sm:grid-cols-2 xl:grid-cols-4">
         {metrics.map((metric) => (
-          <article key={metric.label} className="bg-white p-5">
+          <article key={metric.label} className="bg-blue-50/70 p-5">
             <div className="flex items-center justify-between gap-3">
               <p className="text-sm text-ink/65">{metric.label}</p>
               <span className={`h-2.5 w-2.5 rounded-full ${metric.color}`} />
@@ -66,21 +66,21 @@ export default function DashboardPage() {
           </div>
           <a href="/api/exams" className="text-sm font-semibold text-forest hover:underline">View API</a>
         </div>
-        <div className="overflow-x-auto rounded-lg border border-ink/10 bg-white">
-          <div className="grid min-w-[680px] grid-cols-[minmax(220px,1.5fr)_1fr_140px_110px] border-b border-ink/10 px-5 py-3 text-[10px] font-bold uppercase tracking-[0.13em] text-ink/40">
+        <div className="overflow-x-auto rounded-lg border border-primary/15 bg-blue-50/50 shadow-sm">
+          <div className="grid min-w-[680px] grid-cols-[minmax(220px,1.5fr)_1fr_140px_110px] border-b border-primary/10 bg-blue-100/40 px-5 py-3 text-[10px] font-bold uppercase tracking-[0.13em] text-ink/55">
             <span>Exam</span><span>Progress</span><span>Status</span><span>Updated</span>
           </div>
           {activity.map((item) => (
-            <article key={item.title} className="grid min-w-[680px] grid-cols-[minmax(220px,1.5fr)_1fr_140px_110px] items-center border-b border-ink/5 px-5 py-4 last:border-0">
+            <article key={item.title} className="grid min-w-[680px] grid-cols-[minmax(220px,1.5fr)_1fr_140px_110px] items-center border-b border-primary/10 bg-white/60 px-5 py-4 last:border-0">
               <div>
                 <h3 className="text-sm font-semibold text-ink">{item.title}</h3>
                 <p className="mt-1 text-xs text-ink/50">{item.detail}</p>
               </div>
               <div className="flex items-center gap-3 pr-6">
-                <div className="h-1.5 flex-1 rounded-full bg-paper"><div className="h-1.5 rounded-full bg-forest" style={{ width: item.progress }} /></div>
+                <div className="h-1.5 flex-1 rounded-full bg-blue-100"><div className="h-1.5 rounded-full bg-primary" style={{ width: item.progress }} /></div>
                 <span className="w-9 text-right text-xs tabular-nums text-ink/55">{item.progress}</span>
               </div>
-              <span className="text-xs font-medium text-forest">{item.status}</span>
+              <span className="text-xs font-medium text-blue-800">{item.status}</span>
               <span className="text-xs text-ink/45">{item.time}</span>
             </article>
           ))}

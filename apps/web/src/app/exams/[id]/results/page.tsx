@@ -133,13 +133,13 @@ export default function ExamResultsPage({ params }: { params: { id: string } }) 
         <button
           type="button"
           onClick={() => window.print()}
-          className="rounded-md bg-forest px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#17483c]"
+          className="rounded-md bg-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
         >
           🖨️ Print Results
         </button>
       </div>
 
-      <header className="border-b border-ink/10 pb-5 print:hidden">
+      <header className="border-b border-primary/20 pb-5 print:hidden">
         <p className="text-xs font-bold uppercase tracking-widest text-forest">Exam results</p>
         <h1 className="mt-2 text-3xl font-bold text-ink">{exam.title}</h1>
         <p className="mt-2 text-sm text-ink/55">
@@ -153,9 +153,9 @@ export default function ExamResultsPage({ params }: { params: { id: string } }) 
         <p className="mt-1 text-sm">Printed {printDate}</p>
       </header>
 
-      <div className="overflow-x-auto rounded-lg border border-ink/10 bg-white shadow-sm print:overflow-visible print:rounded-none print:border-0 print:bg-white print:shadow-none">
+      <div className="overflow-x-auto rounded-lg border border-primary/15 bg-blue-50/50 shadow-sm print:overflow-visible print:rounded-none print:border-0 print:bg-white print:shadow-none">
         <table className="results-table w-full border-collapse text-left text-sm">
-          <thead className="bg-paper text-xs uppercase text-ink/60 print:border-b-2 print:border-black print:bg-white print:text-black">
+          <thead className="bg-blue-100/60 text-xs uppercase text-ink/70 print:border-b-2 print:border-black print:bg-white print:text-black">
             <tr>
               <th scope="col" className="px-5 py-3 font-semibold print:px-2 print:py-2">Student Name</th>
               <th scope="col" className="px-5 py-3 font-semibold print:px-2 print:py-2">Matric Number</th>
@@ -198,7 +198,7 @@ export default function ExamResultsPage({ params }: { params: { id: string } }) 
                         type="button"
                         onClick={() => void autoGrade(submission.id)}
                         disabled={gradingScriptId !== null}
-                        className="mt-2 block rounded-md bg-forest px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#17483c] disabled:cursor-wait disabled:opacity-60 print:hidden"
+                        className="mt-2 block rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:cursor-wait disabled:opacity-60 print:hidden"
                       >
                         {gradingScriptId === submission.id ? 'Grading...' : '🤖 Auto-Grade'}
                       </button>

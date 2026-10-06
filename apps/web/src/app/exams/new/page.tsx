@@ -203,7 +203,7 @@ export default function CreateExamPage() {
         <div className="flex gap-4 pt-4">
           <button
             type="submit"
-            className="px-6 py-2 bg-forest text-white rounded-md hover:bg-[#17483c] font-semibold"
+            className="px-6 py-2 bg-primary text-white rounded-md hover:bg-blue-700 font-semibold"
           >
             Create Exam
           </button>
