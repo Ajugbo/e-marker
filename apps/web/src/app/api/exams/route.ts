@@ -28,9 +28,22 @@ export async function GET() {
       },
     });
     return NextResponse.json({ exams });
-  } catch (error) {
-    console.error("[api:exams/get] Failed to fetch exams", error);
-    return NextResponse.json({ error: "Failed to fetch exams" }, { status: 500 });
+  } catch (err) {
+    if (err instanceof Error) {
+      console.error("[api:exams/get] Failed to fetch exams", {
+        name: err.name,
+        message: err.message,
+        stack: err.stack,
+        code: "code" in err ? err.code : undefined,
+        meta: "meta" in err ? err.meta : undefined,
+      });
+    } else {
+      console.error("[api:exams/get] Failed to fetch exams", err);
+    }
+    const details = err instanceof Error ? err.message : String(err);
+    const meta =
+      typeof err === "object" && err !== null && "meta" in err ? err.meta : undefined;
+    return NextResponse.json({ error: "DB_ERROR", details, meta }, { status: 500 });
   }
 }
 
