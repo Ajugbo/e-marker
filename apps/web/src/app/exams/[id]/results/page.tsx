@@ -325,9 +325,14 @@ export default function ExamResultsPage({ params }: { params: { id: string } }) 
         </p>
       )}
       {gradeError && (
-        <p role="alert" className="rounded-md border border-coral/30 bg-white p-4 text-sm text-coral print:hidden">
-          {gradeError}
-        </p>
+        <div role="alert" className="rounded-md border border-coral/30 bg-white p-4 text-sm text-coral print:hidden">
+          <p>{gradeError}</p>
+          {(gradeError.includes("monthly allowance") || gradeError.includes("credits")) && (
+            <a href="/pricing" className="mt-2 inline-block font-semibold text-primary underline">
+              View plans and buy credits
+            </a>
+          )}
+        </div>
       )}
 
       <div className="flex flex-wrap gap-2 print:hidden" aria-label="Filter scripts by review status">

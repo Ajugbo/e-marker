@@ -26,6 +26,12 @@ const activity = [
 export default function DashboardPage() {
   const [greeting, setGreeting] = useState<string | null>(null);
   const [currentDate, setCurrentDate] = useState<string | null>(null);
+  const [billingSummary, setBillingSummary] = useState<{
+    plan: string;
+    credits: number;
+    subscriptionStatus: string;
+  } | null>(null);
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
 
   useEffect(() => {
     const now = new Date();
@@ -36,6 +42,20 @@ export default function DashboardPage() {
       month: "long",
       day: "numeric",
     }));
+    setPaymentSuccess(new URLSearchParams(window.location.search).get("payment") === "success");
+    const controller = new AbortController();
+    void fetch("/api/payments/billing", { cache: "no-store", signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) return;
+        const data = await response.json() as { plan: string; credits: number; subscriptionStatus: string };
+        setBillingSummary(data);
+      })
+      .catch((error: unknown) => {
+        if (!(error instanceof DOMException && error.name === "AbortError")) {
+          console.error("[dashboard:billing] Could not load account summary", error);
+        }
+      });
+    return () => controller.abort();
   }, []);
 
   return (
@@ -55,6 +75,12 @@ export default function DashboardPage() {
         </Link>
       </header>
 
+      {paymentSuccess && (
+        <p role="status" className="mt-6 rounded-md border border-green-200 bg-green-50 p-4 text-sm text-green-800">
+          Payment received. Your plan or credits will appear once Paystack confirms the transaction.
+        </p>
+      )}
+
       <section aria-label="Workspace metrics" className="grid gap-px overflow-hidden rounded-lg border border-primary/15 bg-primary/15 sm:grid-cols-2 xl:grid-cols-4">
         {metrics.map((metric) => (
           <article key={metric.label} className="bg-blue-50/70 p-5">
@@ -62,8 +88,14 @@ export default function DashboardPage() {
               <p className="text-sm text-ink/65">{metric.label}</p>
               <span className={`h-2.5 w-2.5 rounded-full ${metric.color}`} />
             </div>
-            <p className="mt-5 text-3xl font-semibold tabular-nums text-ink">{metric.value}</p>
-            <p className="mt-1 text-xs text-ink/45">{metric.note}</p>
+            <p className="mt-5 text-3xl font-semibold tabular-nums text-ink">
+              {metric.label === "Credits remaining" ? (billingSummary?.credits ?? "—") : metric.value}
+            </p>
+            <p className="mt-1 text-xs text-ink/45">
+              {metric.label === "Credits remaining"
+                ? `Current plan: ${billingSummary?.plan ?? "Loading"} · ${billingSummary?.subscriptionStatus ?? "—"}`
+                : metric.note}
+            </p>
           </article>
         ))}
       </section>

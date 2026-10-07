@@ -2,22 +2,50 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 
 const navigation = [
-  ["Overview", "/", "01"],
+  ["Overview", "/dashboard", "01"],
   ["Exams", "/exams", "02"],
   ["Scripts", "/scripts", "03"],
-  ["Credits", "/credits", "04"],
-  ["Review", "/review", "05"],
+  ["Review", "/review", "04"],
+  ["Billing", "/settings/billing", "05"],
+  ["Pricing", "/pricing", "06"],
 ] as const;
+
+type AccountSummary = {
+  plan: "FREE" | "BASIC" | "PRO";
+  credits: number;
+  subscriptionStatus: "ACTIVE" | "CANCELLED" | "PAST_DUE";
+};
 
 export default function SidebarNavigation() {
   const pathname = usePathname();
+  const [account, setAccount] = useState<AccountSummary | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void fetch("/api/payments/billing", { cache: "no-store", signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) return;
+        const data = await response.json() as AccountSummary;
+        setAccount(data);
+      })
+      .catch((error: unknown) => {
+        if (!(error instanceof DOMException && error.name === "AbortError")) {
+          console.error("[sidebar:billing] Could not load account summary", error);
+        }
+      });
+    return () => controller.abort();
+  }, []);
 
   return (
-    <nav className="flex gap-2 overflow-x-auto lg:flex-col">
+    <>
+      <nav className="flex gap-2 overflow-x-auto lg:flex-col">
       {navigation.map(([label, href, number]) => {
-        const isActive = href === "/" ? pathname === "/" : pathname.startsWith(href);
+        const isActive = href === "/dashboard"
+          ? pathname === "/" || pathname.startsWith("/dashboard")
+          : pathname.startsWith(href);
 
         return (
           <Link
@@ -35,6 +63,20 @@ export default function SidebarNavigation() {
           </Link>
         );
       })}
-    </nav>
+      </nav>
+      {account && (
+        <Link href="/settings/billing" className="mt-5 hidden rounded-lg border border-white/15 bg-white/10 p-4 text-white hover:bg-white/15 lg:block">
+          <span className="flex items-center justify-between text-xs text-blue-100/75">
+            <span>Current plan</span><span className="font-semibold text-white">{account.plan}</span>
+          </span>
+          <span className="mt-3 flex items-center justify-between text-xs text-blue-100/75">
+            <span>Credits</span><span className="font-semibold text-white">{account.credits}</span>
+          </span>
+          <span className="mt-3 block text-[10px] text-blue-100/60">
+            {account.subscriptionStatus.replace("_", " ")}
+          </span>
+        </Link>
+      )}
+    </>
   );
 }

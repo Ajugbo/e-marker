@@ -3,6 +3,7 @@ import OpenAI from "openai";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getRequestUser } from "@/lib/auth";
+import { getGradingAvailability } from "@/lib/grading-entitlement";
 import { ApiError, errorResponse } from "@/lib/http";
 
 export const dynamic = "force-dynamic";
@@ -57,6 +58,13 @@ export async function POST(
     }
     if (!script.extractedText) {
       throw new ApiError("Process the script before grading", 400);
+    }
+    const availability = await getGradingAvailability(user.id);
+    if (!availability.allowed) {
+      throw new ApiError(
+        `Your ${availability.monthlyLimit}-script monthly allowance is used. Upgrade or buy credits to continue.`,
+        402,
+      );
     }
     const reviewStatus =
       script.reviewStatus === "AWAITING_REVIEW"
@@ -123,19 +131,56 @@ export async function POST(
       }
 
       await prisma.$transaction(async (transaction) => {
-        const balance = await transaction.user.updateMany({
-          where: { id: user.id, credits: { gte: 1 } },
-          data: { credits: { decrement: 1 } },
+        const latestUser = await transaction.user.findUniqueOrThrow({
+          where: { id: user.id },
+          select: {
+            credits: true,
+            plan: true,
+            subscriptionStatus: true,
+            subscriptionEndsAt: true,
+          },
         });
-        if (balance.count === 0) {
-          throw new ApiError("Insufficient credits to grade this script", 400);
+        const currentTime = new Date();
+        const paidPlanIsActive =
+          latestUser.plan !== "FREE"
+          && latestUser.subscriptionStatus === "ACTIVE"
+          && latestUser.subscriptionEndsAt !== null
+          && latestUser.subscriptionEndsAt > currentTime;
+        const effectivePlan = paidPlanIsActive ? latestUser.plan : "FREE";
+        const hasCredits = latestUser.credits > 0;
+        if (!hasCredits && effectivePlan !== "PRO") {
+          const monthlyUsage = await transaction.creditTransaction.count({
+            where: {
+              userId: user.id,
+              type: { in: ["deduction", "plan_usage"] },
+              amount: { lte: 0 },
+              createdAt: { gte: new Date(currentTime.getFullYear(), currentTime.getMonth(), 1) },
+            },
+          });
+          const monthlyLimit = effectivePlan === "BASIC" ? 100 : 10;
+          if (monthlyUsage >= monthlyLimit) {
+            throw new ApiError(
+              `Your ${monthlyLimit}-script monthly allowance is used. Upgrade or buy credits to continue.`,
+              402,
+            );
+          }
+        }
+
+        if (hasCredits) {
+          const balance = await transaction.user.updateMany({
+            where: { id: user.id, credits: { gte: 1 } },
+            data: { credits: { decrement: 1 } },
+          });
+          if (balance.count === 0) {
+            throw new ApiError("Insufficient credits to grade this script", 402);
+          }
         }
 
         await transaction.creditTransaction.create({
           data: {
             userId: user.id,
-            amount: -1,
-            type: "deduction",
+            amount: hasCredits ? -1 : 0,
+            type: hasCredits ? "deduction" : "plan_usage",
             description: `AI grading for ${script.studentName}`,
           },
         });
@@ -163,7 +208,7 @@ export async function POST(
             feedback: result.data.feedback,
           },
         });
-      });
+      }, { isolationLevel: "Serializable" });
 
       return NextResponse.json(result.data);
     } catch (error) {
