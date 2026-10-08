@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 
 export interface ExamAssistantContext {
   title: string;
@@ -17,15 +17,31 @@ interface ChatMessage {
 
 interface ExamAssistantChatProps {
   examContext: ExamAssistantContext;
+  activeQuestionIndex: number | null;
+  activeQuestionText: string;
+  isOpen: boolean;
+  onOpenChange: (isOpen: boolean) => void;
 }
 
-export default function ExamAssistantChat({ examContext }: ExamAssistantChatProps) {
+export default function ExamAssistantChat({
+  examContext,
+  activeQuestionIndex,
+  activeQuestionText,
+  isOpen,
+  onOpenChange,
+}: ExamAssistantChatProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
-  const [isOpen, setIsOpen] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState('');
   const [copiedMessage, setCopiedMessage] = useState<number | null>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const frame = window.requestAnimationFrame(() => inputRef.current?.focus());
+    return () => window.cancelAnimationFrame(frame);
+  }, [activeQuestionIndex, activeQuestionText, isOpen]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -42,7 +58,13 @@ export default function ExamAssistantChat({ examContext }: ExamAssistantChatProp
       const response = await fetch('/api/chat/exam-assistant', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: updatedMessages, examContext }),
+        body: JSON.stringify({
+          messages: updatedMessages,
+          examContext: {
+            ...examContext,
+            ...(activeQuestionText ? { currentQuestionText: activeQuestionText } : {}),
+          },
+        }),
       });
       const data = (await response.json()) as { reply?: string; error?: string };
       if (!response.ok) throw new Error(data.error || 'Failed to contact the exam assistant.');
@@ -77,7 +99,7 @@ export default function ExamAssistantChat({ examContext }: ExamAssistantChatProp
         <button
           type="button"
           aria-expanded={isOpen}
-          onClick={() => setIsOpen(!isOpen)}
+          onClick={() => onOpenChange(!isOpen)}
           className="shrink-0 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium hover:bg-gray-50"
         >
           {isOpen ? 'Hide assistant' : 'Open assistant'}
@@ -86,6 +108,11 @@ export default function ExamAssistantChat({ examContext }: ExamAssistantChatProp
 
       {isOpen && (
         <div className="border-t border-blue-200 p-4">
+          {activeQuestionIndex !== null && activeQuestionText && (
+            <p className="mb-3 rounded-md bg-blue-100 px-3 py-2 text-sm text-blue-900">
+              Focusing on Question {activeQuestionIndex + 1}
+            </p>
+          )}
           <div
             aria-live="polite"
             className="mb-4 max-h-80 space-y-3 overflow-y-auto rounded-md border border-gray-200 bg-white p-3"
@@ -139,6 +166,7 @@ export default function ExamAssistantChat({ examContext }: ExamAssistantChatProp
             </label>
             <textarea
               id="exam-assistant-input"
+              ref={inputRef}
               value={input}
               onChange={(event) => setInput(event.target.value)}
               maxLength={5000}

@@ -13,8 +13,22 @@ interface ExamResponse {
   error?: string;
 }
 
+interface EditableQuestion {
+  text: string;
+  markingScheme: string;
+  original: Record<string, unknown>;
+}
+
 function getString(value: unknown) {
   return typeof value === 'string' ? value : '';
+}
+
+function getText(value: unknown) {
+  if (typeof value === 'string') return value;
+  if (Array.isArray(value)) {
+    return value.map((item) => typeof item === 'string' ? item : JSON.stringify(item)).join('\n');
+  }
+  return value === undefined || value === null ? '' : JSON.stringify(value, null, 2);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -27,8 +41,11 @@ export default function EditExamPage({ params }: { params: { id: string } }) {
   const [subject, setSubject] = useState('');
   const [classLevel, setClassLevel] = useState('');
   const [term, setTerm] = useState('');
-  const [sampleQuestions, setSampleQuestions] = useState('');
-  const [rubric, setRubric] = useState('');
+  const [rubricFields, setRubricFields] = useState<Record<string, unknown>>({});
+  const [questions, setQuestions] = useState<EditableQuestion[]>([]);
+  const [activeQuestionIndex, setActiveQuestionIndex] = useState<number | null>(null);
+  const [activeQuestionText, setActiveQuestionText] = useState('');
+  const [isChatOpen, setIsChatOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
@@ -45,18 +62,22 @@ export default function EditExamPage({ params }: { params: { id: string } }) {
         if (!data.exam) throw new Error('The exam response was invalid.');
 
         setInstitution(data.exam.title);
-        setRubric(data.exam.rubricJson);
         try {
           const parsed: unknown = JSON.parse(data.exam.rubricJson);
           if (!isRecord(parsed)) throw new Error('The rubric must be a JSON object.');
+          setRubricFields(parsed);
           setSubject(getString(parsed.subject));
           setClassLevel(getString(parsed.classLevel));
           setTerm(getString(parsed.term));
-          const questions = Array.isArray(parsed.questions) ? parsed.questions : [];
-          setSampleQuestions(questions
-            .map((question) => isRecord(question) ? getString(question.question) : '')
-            .filter(Boolean)
-            .join('\n'));
+          const savedQuestions = Array.isArray(parsed.questions) ? parsed.questions : [];
+          setQuestions(savedQuestions.map((question): EditableQuestion => {
+            const original = isRecord(question) ? question : {};
+            return {
+              text: getString(original.text) || getString(original.question),
+              markingScheme: getText(original.markingScheme ?? original.criteria),
+              original,
+            };
+          }));
         } catch (parseError) {
           setError(parseError instanceof Error ? parseError.message : 'The saved rubric is invalid JSON.');
         }
@@ -80,19 +101,18 @@ export default function EditExamPage({ params }: { params: { id: string } }) {
     setSuccess('');
 
     try {
-      let parsedRubric: unknown;
-      try {
-        parsedRubric = JSON.parse(rubric) as unknown;
-      } catch {
-        throw new Error('Rubric details must be valid JSON.');
-      }
-      if (!isRecord(parsedRubric)) throw new Error('Rubric details must be a JSON object.');
-
+      const updatedQuestions = questions.map((question) => ({
+        ...question.original,
+        text: question.text,
+        question: question.text,
+        markingScheme: question.markingScheme,
+      }));
       const updatedRubric: Record<string, unknown> = {
-        ...parsedRubric,
+        ...rubricFields,
         title: institution.trim(),
         subject: subject.trim(),
         classLevel: classLevel.trim(),
+        questions: updatedQuestions,
       };
       if (term.trim()) updatedRubric.term = term.trim();
       else delete updatedRubric.term;
@@ -115,6 +135,29 @@ export default function EditExamPage({ params }: { params: { id: string } }) {
       setIsSaving(false);
     }
   };
+
+  const updateQuestion = (index: number, field: 'text' | 'markingScheme', value: string) => {
+    setQuestions((currentQuestions) => currentQuestions.map((question, questionIndex) => (
+      questionIndex === index ? { ...question, [field]: value } : question
+    )));
+    if (activeQuestionIndex === index && field === 'text') {
+      setActiveQuestionText(value);
+    }
+  };
+
+  const persistedQuestions = questions.map((question) => ({
+    ...question.original,
+    text: question.text,
+    question: question.text,
+    markingScheme: question.markingScheme,
+  }));
+  const assistantRubric = JSON.stringify({
+    ...rubricFields,
+    title: institution,
+    subject,
+    classLevel,
+    questions: persistedQuestions,
+  });
 
   if (isLoading) return <div className="p-8 text-gray-500">Loading exam...</div>;
 
@@ -194,55 +237,95 @@ export default function EditExamPage({ params }: { params: { id: string } }) {
           />
         </div>
 
-        <div>
-          <label htmlFor="sampleQuestions" className="mb-2 block text-sm font-medium text-gray-700">
-            Questions in this rubric
-          </label>
-          <textarea
-            id="sampleQuestions"
-            readOnly
-            value={sampleQuestions}
-            rows={5}
-            className="w-full rounded-md border border-gray-300 bg-gray-50 px-4 py-2"
-          />
-          <p className="mt-1 text-xs text-gray-500">Edit questions and marking criteria in the rubric JSON below.</p>
-        </div>
+        <section aria-labelledby="exam-questions-heading" className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 id="exam-questions-heading" className="text-lg font-semibold text-gray-900">
+                Questions and Marking Schemes
+              </h2>
+              <p className="mt-1 text-sm text-gray-600">
+                Edit each question and its marking scheme before saving.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setQuestions((currentQuestions) => [
+                ...currentQuestions,
+                { text: '', markingScheme: '', original: {} },
+              ])}
+              className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-semibold hover:bg-gray-50"
+            >
+              Add Question
+            </button>
+          </div>
 
-        <div>
-          <label htmlFor="rubric" className="mb-2 block text-sm font-medium text-gray-700">
-            Rubric/Mark Scheme (JSON format — editable)
-          </label>
-          <textarea
-            id="rubric"
-            required
-            value={rubric}
-            onChange={(event) => {
-              const value = event.target.value;
-              setRubric(value);
-              try {
-                const parsed: unknown = JSON.parse(value);
-                if (isRecord(parsed) && Array.isArray(parsed.questions)) {
-                  setSampleQuestions(parsed.questions
-                    .map((question) => isRecord(question) ? getString(question.question) : '')
-                    .filter(Boolean)
-                    .join('\n'));
-                }
-              } catch {
-                setSampleQuestions('');
-              }
-            }}
-            rows={16}
-            className="w-full rounded-md border border-gray-300 px-4 py-2 font-mono text-sm"
-          />
-        </div>
+          {questions.length === 0 && (
+            <p className="rounded-md border border-dashed border-gray-300 p-4 text-sm text-gray-500">
+              No questions yet. Add a question to get started.
+            </p>
+          )}
+
+          {questions.map((question, index) => (
+            <article key={index} className="space-y-4 rounded-lg border border-gray-200 p-4">
+              <h3 className="font-semibold text-gray-800">Question {index + 1}</h3>
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                <div>
+                  <label
+                    htmlFor={`question-text-${index}`}
+                    className="mb-2 block text-sm font-medium text-gray-700"
+                  >
+                    Question Text
+                  </label>
+                  <textarea
+                    id={`question-text-${index}`}
+                    value={question.text}
+                    onChange={(event) => updateQuestion(index, 'text', event.target.value)}
+                    rows={5}
+                    className="w-full min-w-0 rounded-md border border-gray-300 px-3 py-2"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor={`question-marking-scheme-${index}`}
+                    className="mb-2 block text-sm font-medium text-gray-700"
+                  >
+                    Marking Scheme
+                  </label>
+                  <textarea
+                    id={`question-marking-scheme-${index}`}
+                    value={question.markingScheme}
+                    onChange={(event) => updateQuestion(index, 'markingScheme', event.target.value)}
+                    rows={5}
+                    className="w-full min-w-0 rounded-md border border-gray-300 px-3 py-2"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveQuestionIndex(index);
+                      setActiveQuestionText(question.text);
+                      setIsChatOpen(true);
+                    }}
+                    className="mt-2 text-sm font-semibold text-primary hover:underline"
+                  >
+                    Ask AI about this question
+                  </button>
+                </div>
+              </div>
+            </article>
+          ))}
+        </section>
 
         <ExamAssistantChat
+          activeQuestionIndex={activeQuestionIndex}
+          activeQuestionText={activeQuestionText}
           examContext={{
             title: institution,
             subject,
             classLevel,
-            rubric,
+            rubric: assistantRubric,
           }}
+          isOpen={isChatOpen}
+          onOpenChange={setIsChatOpen}
         />
 
         <div className="flex gap-4">
