@@ -2,10 +2,9 @@ import { useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NavigationProp, RouteProp } from '@react-navigation/native';
+import { API_BASE_URL } from '../constants/api';
 import { theme } from '../constants/theme';
 import type { RootStackParamList, ScriptMetadata } from '../types/navigation';
-
-const API_BASE_URL = (process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000').replace(/\/$/, '');
 
 const metadataFields: { key: keyof ScriptMetadata; label: string }[] = [
   { key: 'studentName', label: 'Student name' },

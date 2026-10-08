@@ -6,10 +6,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as VideoThumbnails from 'expo-video-thumbnails';
+import { API_BASE_URL } from '../constants/api';
 import { theme } from '../constants/theme';
 import type { ProcessingResult, RootStackParamList } from '../types/navigation';
 
-const API_BASE_URL = (process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000').replace(/\/$/, '');
 const FRAME_TIMES_MS = [250, 750, 1500];
 
 type Recording = { uri: string };
@@ -147,7 +147,7 @@ export default function ScanScreen() {
 
   const finishScan = async () => {
     if (!selectedRubricId) {
-      setErrorMessage('Please create a rubric on the web dashboard before grading.');
+      setErrorMessage('Please create a rubric on the web dashboard first.');
       return;
     }
     if (segmentUrisRef.current.length === 0) {
@@ -164,6 +164,7 @@ export default function ScanScreen() {
         cameraRef.current?.stopRecording();
       }
       await segmentTaskRef.current;
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
       const frames = await extractFrames();
       setStatusMessage('Sending pages for grading…');
       const response = await fetch(`${API_BASE_URL}/api/grading/process`, {
@@ -214,14 +215,14 @@ export default function ScanScreen() {
 
       {!isLoadingRubric && !rubricError && rubrics.length === 0 && (
         <Text accessibilityRole="alert" style={styles.rubricBanner}>
-          Please create a rubric on the web dashboard before grading.
+          Please create a rubric on the web dashboard first.
         </Text>
       )}
       {!!rubricError && <Text accessibilityRole="alert" style={styles.errorText}>{rubricError}</Text>}
       {isLoadingRubric ? (
         <View style={styles.rubricLoading}>
           <ActivityIndicator color={theme.colors.primary} />
-          <Text style={styles.rubricLoadingText}>Loading rubrics…</Text>
+          <Text style={styles.rubricLoadingText}>Loading...</Text>
         </View>
       ) : rubrics.length > 0 ? (
         <View style={styles.rubricPicker}>
