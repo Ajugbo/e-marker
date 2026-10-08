@@ -1,9 +1,9 @@
-import { useRef, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NavigationProp } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { CameraView, useCameraPermissions } from 'expo-camera';
+import { CameraView, useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as VideoThumbnails from 'expo-video-thumbnails';
 import { theme } from '../constants/theme';
@@ -18,7 +18,10 @@ export default function ScanScreen() {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const cameraRef = useRef<CameraView>(null);
   const [permission, requestPermission] = useCameraPermissions();
+  const [microphonePermission, requestMicrophonePermission] = useMicrophonePermissions();
   const [rubricId, setRubricId] = useState('');
+  const [isLoadingRubric, setIsLoadingRubric] = useState(true);
+  const [rubricError, setRubricError] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
@@ -28,6 +31,35 @@ export default function ScanScreen() {
   const isRecordingRef = useRef(false);
   const segmentTaskRef = useRef<Promise<void> | null>(null);
   const segmentUrisRef = useRef<string[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadDefaultRubric = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/exams`, { credentials: 'include' });
+        const data = await response.json() as { exams?: { id?: unknown }[]; error?: string };
+        if (!response.ok) throw new Error(data.error ?? 'Could not load your grading rubrics.');
+        if (!Array.isArray(data.exams)) throw new Error('The grading rubrics response was invalid.');
+        if (isMounted) setRubricId(typeof data.exams[0]?.id === 'string' ? data.exams[0].id : '');
+      } catch (error) {
+        if (isMounted) {
+          setRubricError(error instanceof Error ? error.message : 'Could not load your grading rubrics.');
+        }
+      } finally {
+        if (isMounted) setIsLoadingRubric(false);
+      }
+    };
+
+    void loadDefaultRubric();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const requestCameraAndMicrophonePermissions = async () => {
+    await Promise.all([requestPermission(), requestMicrophonePermission()]);
+  };
 
   const startHoldRecording = async () => {
     if (isUploading || holdPressedRef.current) return;
@@ -105,8 +137,8 @@ export default function ScanScreen() {
   };
 
   const finishScan = async () => {
-    if (!rubricId.trim()) {
-      setErrorMessage('Enter the rubric ID before processing the scan.');
+    if (!rubricId) {
+      setErrorMessage('Please create a grading rubric on the web dashboard first.');
       return;
     }
     if (segmentUrisRef.current.length === 0) {
@@ -129,11 +161,11 @@ export default function ScanScreen() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ rubricId: rubricId.trim(), frames }),
+        body: JSON.stringify({ rubricId, frames }),
       });
       const result = await response.json() as ProcessingResult & { error?: string };
       if (!response.ok) throw new Error(result.error ?? 'Could not process this scan.');
-      navigation.navigate('Result', { result, rubricId: rubricId.trim() });
+      navigation.navigate('Result', { result, rubricId });
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Unable to process this scan.');
       setStatusMessage('');
@@ -158,36 +190,33 @@ export default function ScanScreen() {
       </View>
 
       <View style={styles.cameraPlaceholder}>
-        {permission?.granted ? (
+        {permission?.granted && microphonePermission?.granted ? (
           <CameraView ref={cameraRef} style={styles.camera} facing="back" mode="video" videoQuality="720p" />
         ) : (
           <View style={styles.permissionPrompt}>
             <Ionicons name="videocam" size={44} color={theme.colors.primary} />
-            <Text style={styles.cameraText}>Camera access needed</Text>
-            <TouchableOpacity onPress={() => void requestPermission()} style={styles.permissionButton}>
-              <Text style={styles.permissionButtonText}>Allow camera</Text>
+            <Text style={styles.cameraText}>Camera and microphone access needed</Text>
+            <TouchableOpacity onPress={() => void requestCameraAndMicrophonePermissions()} style={styles.permissionButton}>
+              <Text style={styles.permissionButtonText}>Allow access</Text>
             </TouchableOpacity>
           </View>
         )}
       </View>
 
-      <TextInput
-        accessibilityLabel="Rubric ID"
-        autoCapitalize="none"
-        onChangeText={setRubricId}
-        placeholder="Rubric ID"
-        placeholderTextColor="#94a3b8"
-        style={styles.input}
-        value={rubricId}
-      />
+      {!isLoadingRubric && !rubricError && !rubricId && (
+        <Text accessibilityRole="alert" style={styles.rubricBanner}>
+          Please create a grading rubric on the web dashboard first.
+        </Text>
+      )}
+      {!!rubricError && <Text accessibilityRole="alert" style={styles.errorText}>{rubricError}</Text>}
 
       <TouchableOpacity
         accessibilityRole="button"
         accessibilityLabel={isRecording ? 'Release to pause page recording' : 'Hold to record a page'}
-        disabled={!permission?.granted || isUploading}
+        disabled={!permission?.granted || !microphonePermission?.granted || isUploading}
         onPressIn={() => void startHoldRecording()}
         onPressOut={releaseHold}
-        style={[styles.scanButton, isRecording && styles.recordingButton, (!permission?.granted || isUploading) && styles.disabledButton]}
+        style={[styles.scanButton, isRecording && styles.recordingButton, (!permission?.granted || !microphonePermission?.granted || isUploading) && styles.disabledButton]}
       >
         {isRecording ? <Ionicons name="radio-button-on" size={22} color="#fff" /> : <Ionicons name="videocam" size={22} color="#fff" />}
         <Text style={styles.scanButtonText}>{isRecording ? 'Recording — release to pause' : 'Hold to Scan'}</Text>
@@ -198,9 +227,9 @@ export default function ScanScreen() {
       <View style={styles.actions}>
         <TouchableOpacity
           accessibilityRole="button"
-          disabled={isUploading || segmentCount === 0}
+          disabled={isLoadingRubric || !rubricId || isUploading || segmentCount === 0}
           onPress={() => void finishScan()}
-          style={[styles.doneButton, (isUploading || segmentCount === 0) && styles.disabledButton]}
+          style={[styles.doneButton, (isLoadingRubric || !rubricId || isUploading || segmentCount === 0) && styles.disabledButton]}
         >
           {isUploading ? <ActivityIndicator color="#fff" /> : <Text style={styles.scanButtonText}>Done</Text>}
         </TouchableOpacity>
@@ -271,15 +300,15 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '600',
   },
-  input: {
-    height: 48,
+  rubricBanner: {
     marginBottom: 12,
-    paddingHorizontal: 13,
+    padding: 12,
     borderWidth: 1,
-    borderColor: '#cbd5e1',
+    borderColor: '#f3d38a',
     borderRadius: 9,
-    backgroundColor: '#fff',
-    color: '#1e293b',
+    backgroundColor: '#fff8e6',
+    color: '#805b00',
+    textAlign: 'center',
   },
   scanButton: {
     width: '100%',
