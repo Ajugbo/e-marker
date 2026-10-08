@@ -48,7 +48,7 @@ export default function CreateExamPage() {
         body: JSON.stringify({
           title: parsedDetails.data.institution,
           subject: parsedDetails.data.courseSubject,
-          topic: parsedDetails.data.classLevel,
+          classLevel: parsedDetails.data.classLevel,
           sampleQuestions: parsedDetails.data.sampleQuestions,
         }),
       });
