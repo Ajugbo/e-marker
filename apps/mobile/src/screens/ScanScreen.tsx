@@ -1,137 +1,160 @@
 import { useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { NavigationProp } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as VideoThumbnails from 'expo-video-thumbnails';
 import { theme } from '../constants/theme';
+import type { ProcessingResult, RootStackParamList } from '../types/navigation';
 
 const API_BASE_URL = (process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000').replace(/\/$/, '');
-const POLL_INTERVAL_MS = 2000;
-const MAX_POLL_ATTEMPTS = 90;
+const FRAME_TIMES_MS = [250, 750, 1500];
 
-type ScriptResponse = {
-  script: {
-    status: string;
-    grade: { totalScore: number; feedback: string | null } | null;
-  };
-  error?: string;
-};
+type Recording = { uri: string };
 
 export default function ScanScreen() {
+  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const cameraRef = useRef<CameraView>(null);
   const [permission, requestPermission] = useCameraPermissions();
-  const [studentName, setStudentName] = useState('');
-  const [matricNumber, setMatricNumber] = useState('');
-  const [studentClass, setStudentClass] = useState('');
+  const [rubricId, setRubricId] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
-  const [grade, setGrade] = useState<ScriptResponse['script']['grade']>(null);
+  const [segmentCount, setSegmentCount] = useState(0);
+  const holdPressedRef = useRef(false);
+  const isRecordingRef = useRef(false);
+  const segmentTaskRef = useRef<Promise<void> | null>(null);
+  const segmentUrisRef = useRef<string[]>([]);
 
-  const pollForGrade = async (scriptId: string) => {
-    for (let attempt = 0; attempt < MAX_POLL_ATTEMPTS; attempt += 1) {
-      const response = await fetch(`${API_BASE_URL}/api/scripts/${scriptId}`, {
-        credentials: 'include',
-      });
-      const result = await response.json() as ScriptResponse;
-      if (!response.ok) throw new Error(result.error ?? 'Could not check grading status.');
+  const startHoldRecording = async () => {
+    if (isUploading || holdPressedRef.current) return;
+    holdPressedRef.current = true;
 
-      if (result.script.status === 'graded' && result.script.grade) {
-        setGrade(result.script.grade);
-        setStatusMessage('Grading complete');
-        return;
-      }
-      if (result.script.status === 'failed') {
-        throw new Error('Processing failed. Please upload the recording again.');
-      }
-      setStatusMessage(result.script.status === 'processing' ? 'Reading the script…' : 'Preparing the grade…');
-      await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
-    }
-    throw new Error('Grading is taking longer than expected. Check Results later.');
-  };
+    const pendingSegment = segmentTaskRef.current;
+    if (pendingSegment) await pendingSegment;
+    if (!holdPressedRef.current) return;
 
-  const uploadAndPoll = async (uri: string) => {
-    if (!studentName.trim() || !matricNumber.trim() || !studentClass.trim()) {
-      throw new Error('Enter the student name, matric number, and class before recording.');
-    }
-
-    setIsUploading(true);
-    setGrade(null);
-    setErrorMessage('');
-    setStatusMessage('Uploading video…');
-    try {
-      const formData = new FormData();
-      formData.append('studentName', studentName.trim());
-      formData.append('matricNumber', matricNumber.trim());
-      formData.append('class', studentClass.trim());
-      const fileName = uri.split('/').pop() || 'exam-script.mp4';
-      formData.append('file', {
-        uri,
-        name: fileName,
-        type: fileName.toLowerCase().endsWith('.mov') ? 'video/quicktime' : 'video/mp4',
-      } as unknown as Blob);
-
-      const response = await fetch(`${API_BASE_URL}/api/scripts/upload`, {
-        method: 'POST',
-        body: formData,
-        credentials: 'include',
-      });
-      const result = await response.json() as { id?: string; error?: string };
-      if (!response.ok || !result.id) throw new Error(result.error ?? 'Video upload failed.');
-      await pollForGrade(result.id);
-    } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Unable to upload this recording.');
-      setStatusMessage('');
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const startRecording = async () => {
-    if (!permission?.granted) {
-      const result = await requestPermission();
-      if (!result.granted) {
-        setErrorMessage('Camera access is required to record a script.');
-        return;
-      }
-    }
-    if (!studentName.trim() || !matricNumber.trim() || !studentClass.trim()) {
-      setErrorMessage('Enter the student name, matric number, and class before recording.');
-      return;
-    }
-    if (!cameraRef.current) {
+    const camera = cameraRef.current;
+    if (!camera) {
+      holdPressedRef.current = false;
       setErrorMessage('Camera is not ready yet. Try again in a moment.');
       return;
     }
 
     setErrorMessage('');
-    setGrade(null);
-    setStatusMessage('Recording…');
+    setStatusMessage('Recording this page…');
+    isRecordingRef.current = true;
     setIsRecording(true);
+
+    const task = camera.recordAsync({ maxDuration: 180 })
+      .then((recording: Recording | undefined) => {
+        if (!recording?.uri) throw new Error('The camera did not save this page recording.');
+        segmentUrisRef.current.push(recording.uri);
+        setSegmentCount(segmentUrisRef.current.length);
+      })
+      .catch((error: unknown) => {
+        setErrorMessage(error instanceof Error ? error.message : 'Could not record this page.');
+        setStatusMessage('');
+      })
+      .finally(() => {
+        isRecordingRef.current = false;
+        setIsRecording(false);
+        if (segmentTaskRef.current === task) segmentTaskRef.current = null;
+      });
+
+    segmentTaskRef.current = task;
+    await task;
+  };
+
+  const releaseHold = () => {
+    holdPressedRef.current = false;
+    if (isRecordingRef.current) cameraRef.current?.stopRecording();
+  };
+
+  const extractFrames = async () => {
+    const frames: { type: 'metadata' | 'content'; image: string }[] = [];
+
+    for (const [segmentIndex, uri] of segmentUrisRef.current.entries()) {
+      const type = segmentIndex === 0 ? 'metadata' : 'content';
+      let segmentFrameCount = 0;
+
+      for (const time of FRAME_TIMES_MS) {
+        let thumbnail: VideoThumbnails.VideoThumbnailsResult;
+        try {
+          thumbnail = await VideoThumbnails.getThumbnailAsync(uri, { time, quality: 0.85 });
+        } catch (error) {
+          if (time === FRAME_TIMES_MS[0]) {
+            throw new Error(`Could not extract a frame from page ${segmentIndex + 1}: ${error instanceof Error ? error.message : 'unknown error'}`);
+          }
+          continue;
+        }
+        const image = await FileSystem.readAsStringAsync(thumbnail.uri, { encoding: FileSystem.EncodingType.Base64 });
+        frames.push({ type, image: `data:image/jpeg;base64,${image}` });
+        segmentFrameCount += 1;
+      }
+
+      if (segmentFrameCount === 0) {
+        throw new Error(`Could not extract frames from page ${segmentIndex + 1}.`);
+      }
+    }
+
+    return frames;
+  };
+
+  const finishScan = async () => {
+    if (!rubricId.trim()) {
+      setErrorMessage('Enter the rubric ID before processing the scan.');
+      return;
+    }
+    if (segmentUrisRef.current.length === 0) {
+      setErrorMessage('Hold the scan button to record at least one page.');
+      return;
+    }
+
+    setIsUploading(true);
+    setErrorMessage('');
+    setStatusMessage('Extracting page frames…');
     try {
-      const recording = await cameraRef.current.recordAsync({ maxDuration: 180 });
-      if (recording?.uri) await uploadAndPoll(recording.uri);
+      if (isRecordingRef.current) {
+        holdPressedRef.current = false;
+        cameraRef.current?.stopRecording();
+      }
+      await segmentTaskRef.current;
+      const frames = await extractFrames();
+      setStatusMessage('Sending pages for grading…');
+      const response = await fetch(`${API_BASE_URL}/api/grading/process`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ rubricId: rubricId.trim(), frames }),
+      });
+      const result = await response.json() as ProcessingResult & { error?: string };
+      if (!response.ok) throw new Error(result.error ?? 'Could not process this scan.');
+      navigation.navigate('Result', { result, rubricId: rubricId.trim() });
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Could not record the script.');
+      setErrorMessage(error instanceof Error ? error.message : 'Unable to process this scan.');
       setStatusMessage('');
     } finally {
-      setIsRecording(false);
+      setIsUploading(false);
+      holdPressedRef.current = false;
     }
   };
 
-  const onRecordPress = () => {
-    if (isRecording) {
-      cameraRef.current?.stopRecording();
-      return;
-    }
-    void startRecording();
+  const retake = () => {
+    segmentUrisRef.current = [];
+    setSegmentCount(0);
+    setErrorMessage('');
+    setStatusMessage('');
   };
 
   return (
     <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
       <View style={styles.header}>
         <Text style={styles.title}>E-Marker</Text>
-        <Text style={styles.subtitle}>Record a script for grading</Text>
+        <Text style={styles.subtitle}>Hold to record each page, then release to turn it</Text>
       </View>
 
       <View style={styles.cameraPlaceholder}>
@@ -148,56 +171,46 @@ export default function ScanScreen() {
         )}
       </View>
 
-      <View style={styles.form}>
-        <Text style={styles.sectionTitle}>Student details</Text>
-        <TextInput
-          accessibilityLabel="Student name"
-          autoCapitalize="words"
-          onChangeText={setStudentName}
-          placeholder="Student name"
-          placeholderTextColor="#94a3b8"
-          style={styles.input}
-          value={studentName}
-        />
-        <TextInput
-          accessibilityLabel="Matric number"
-          onChangeText={setMatricNumber}
-          placeholder="Matric number"
-          placeholderTextColor="#94a3b8"
-          style={styles.input}
-          value={matricNumber}
-        />
-        <TextInput
-          accessibilityLabel="Class"
-          onChangeText={setStudentClass}
-          placeholder="Class"
-          placeholderTextColor="#94a3b8"
-          style={styles.input}
-          value={studentClass}
-        />
-      </View>
+      <TextInput
+        accessibilityLabel="Rubric ID"
+        autoCapitalize="none"
+        onChangeText={setRubricId}
+        placeholder="Rubric ID"
+        placeholderTextColor="#94a3b8"
+        style={styles.input}
+        value={rubricId}
+      />
 
       <TouchableOpacity
         accessibilityRole="button"
-        disabled={isUploading}
-        onPress={onRecordPress}
-        style={[styles.scanButton, isRecording && styles.stopButton, isUploading && styles.disabledButton]}
+        accessibilityLabel={isRecording ? 'Release to pause page recording' : 'Hold to record a page'}
+        disabled={!permission?.granted || isUploading}
+        onPressIn={() => void startHoldRecording()}
+        onPressOut={releaseHold}
+        style={[styles.scanButton, isRecording && styles.recordingButton, (!permission?.granted || isUploading) && styles.disabledButton]}
       >
-        {isUploading ? <ActivityIndicator color="#fff" /> : <Ionicons name={isRecording ? 'stop' : 'videocam'} size={22} color="#fff" />}
-        <Text style={styles.scanButtonText}>{isUploading ? 'Processing script' : isRecording ? 'Stop and upload' : 'Start video scan'}</Text>
+        {isRecording ? <Ionicons name="radio-button-on" size={22} color="#fff" /> : <Ionicons name="videocam" size={22} color="#fff" />}
+        <Text style={styles.scanButtonText}>{isRecording ? 'Recording — release to pause' : 'Hold to Scan'}</Text>
       </TouchableOpacity>
+
+      <Text style={styles.pageCount}>{segmentCount} {segmentCount === 1 ? 'page' : 'pages'} recorded</Text>
+
+      <View style={styles.actions}>
+        <TouchableOpacity
+          accessibilityRole="button"
+          disabled={isUploading || segmentCount === 0}
+          onPress={() => void finishScan()}
+          style={[styles.doneButton, (isUploading || segmentCount === 0) && styles.disabledButton]}
+        >
+          {isUploading ? <ActivityIndicator color="#fff" /> : <Text style={styles.scanButtonText}>Done</Text>}
+        </TouchableOpacity>
+        <TouchableOpacity disabled={isUploading || segmentCount === 0} onPress={retake} style={styles.retakeButton}>
+          <Text style={styles.retakeText}>Retake</Text>
+        </TouchableOpacity>
+      </View>
 
       {!!statusMessage && <Text accessibilityLiveRegion="polite" style={styles.statusText}>{statusMessage}</Text>}
       {!!errorMessage && <Text accessibilityRole="alert" style={styles.errorText}>{errorMessage}</Text>}
-
-      {grade && (
-        <View style={styles.gradeCard}>
-          <Text style={styles.gradeLabel}>Final score</Text>
-          <Text style={styles.gradeScore}>{grade.totalScore}</Text>
-          <Text style={styles.feedbackTitle}>Feedback</Text>
-          <Text style={styles.feedbackText}>{grade.feedback || 'No feedback provided.'}</Text>
-        </View>
-      )}
     </ScrollView>
   );
 }
@@ -258,18 +271,9 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '600',
   },
-  form: {
-    marginBottom: 18,
-  },
-  sectionTitle: {
-    marginBottom: 10,
-    color: '#1e293b',
-    fontSize: 16,
-    fontWeight: '700',
-  },
   input: {
     height: 48,
-    marginBottom: 10,
+    marginBottom: 12,
     paddingHorizontal: 13,
     borderWidth: 1,
     borderColor: '#cbd5e1',
@@ -286,17 +290,50 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  stopButton: {
+  recordingButton: {
     backgroundColor: '#c74739',
   },
   disabledButton: {
-    opacity: 0.65,
+    opacity: 0.55,
   },
   scanButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '700',
     marginLeft: 9,
+  },
+  pageCount: {
+    marginTop: 10,
+    textAlign: 'center',
+    color: '#64748b',
+  },
+  actions: {
+    flexDirection: 'row',
+    marginTop: 16,
+    gap: 10,
+  },
+  doneButton: {
+    flex: 1,
+    height: 50,
+    borderRadius: 10,
+    backgroundColor: theme.colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  retakeButton: {
+    minWidth: 100,
+    height: 50,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  retakeText: {
+    color: '#334155',
+    fontSize: 15,
+    fontWeight: '600',
   },
   statusText: {
     marginTop: 14,
@@ -307,36 +344,5 @@ const styles = StyleSheet.create({
     marginTop: 14,
     textAlign: 'center',
     color: '#b42318',
-  },
-  gradeCard: {
-    width: '100%',
-    marginTop: 18,
-    padding: 18,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#dbe3eb',
-  },
-  gradeLabel: {
-    color: '#64748b',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  gradeScore: {
-    marginTop: 4,
-    color: '#1e293b',
-    fontSize: 34,
-    fontWeight: '700',
-  },
-  feedbackTitle: {
-    marginTop: 14,
-    color: '#1e293b',
-    fontWeight: '700',
-  },
-  feedbackText: {
-    marginTop: 5,
-    color: '#475569',
-    fontSize: 14,
-    lineHeight: 20,
   },
 });
