@@ -13,13 +13,16 @@ const API_BASE_URL = (process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000'
 const FRAME_TIMES_MS = [250, 750, 1500];
 
 type Recording = { uri: string };
+type Rubric = { id: string; title: string };
 
 export default function ScanScreen() {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const cameraRef = useRef<CameraView>(null);
   const [permission, requestPermission] = useCameraPermissions();
   const [microphonePermission, requestMicrophonePermission] = useMicrophonePermissions();
-  const [rubricId, setRubricId] = useState('');
+  const [rubrics, setRubrics] = useState<Rubric[]>([]);
+  const [selectedRubricId, setSelectedRubricId] = useState('');
+  const [isRubricPickerOpen, setIsRubricPickerOpen] = useState(false);
   const [isLoadingRubric, setIsLoadingRubric] = useState(true);
   const [rubricError, setRubricError] = useState('');
   const [isRecording, setIsRecording] = useState(false);
@@ -35,13 +38,19 @@ export default function ScanScreen() {
   useEffect(() => {
     let isMounted = true;
 
-    const loadDefaultRubric = async () => {
+    const loadRubrics = async () => {
       try {
         const response = await fetch(`${API_BASE_URL}/api/exams`, { credentials: 'include' });
-        const data = await response.json() as { exams?: { id?: unknown }[]; error?: string };
+        const data = await response.json() as { exams?: unknown; error?: string };
         if (!response.ok) throw new Error(data.error ?? 'Could not load your grading rubrics.');
         if (!Array.isArray(data.exams)) throw new Error('The grading rubrics response was invalid.');
-        if (isMounted) setRubricId(typeof data.exams[0]?.id === 'string' ? data.exams[0].id : '');
+        const loadedRubrics = data.exams.flatMap((exam): Rubric[] => {
+          if (typeof exam !== 'object' || exam === null || !('id' in exam) || !('title' in exam)) return [];
+          return typeof exam.id === 'string' && typeof exam.title === 'string'
+            ? [{ id: exam.id, title: exam.title }]
+            : [];
+        });
+        if (isMounted) setRubrics(loadedRubrics);
       } catch (error) {
         if (isMounted) {
           setRubricError(error instanceof Error ? error.message : 'Could not load your grading rubrics.');
@@ -51,7 +60,7 @@ export default function ScanScreen() {
       }
     };
 
-    void loadDefaultRubric();
+    void loadRubrics();
     return () => {
       isMounted = false;
     };
@@ -137,8 +146,8 @@ export default function ScanScreen() {
   };
 
   const finishScan = async () => {
-    if (!rubricId) {
-      setErrorMessage('Please create a grading rubric on the web dashboard first.');
+    if (!selectedRubricId) {
+      setErrorMessage('Please create a rubric on the web dashboard before grading.');
       return;
     }
     if (segmentUrisRef.current.length === 0) {
@@ -161,11 +170,11 @@ export default function ScanScreen() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ rubricId, frames }),
+        body: JSON.stringify({ rubricId: selectedRubricId, frames }),
       });
       const result = await response.json() as ProcessingResult & { error?: string };
       if (!response.ok) throw new Error(result.error ?? 'Could not process this scan.');
-      navigation.navigate('Result', { result, rubricId });
+      navigation.navigate('Result', { result, rubricId: selectedRubricId });
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Unable to process this scan.');
       setStatusMessage('');
@@ -203,12 +212,56 @@ export default function ScanScreen() {
         )}
       </View>
 
-      {!isLoadingRubric && !rubricError && !rubricId && (
+      {!isLoadingRubric && !rubricError && rubrics.length === 0 && (
         <Text accessibilityRole="alert" style={styles.rubricBanner}>
-          Please create a grading rubric on the web dashboard first.
+          Please create a rubric on the web dashboard before grading.
         </Text>
       )}
       {!!rubricError && <Text accessibilityRole="alert" style={styles.errorText}>{rubricError}</Text>}
+      {isLoadingRubric ? (
+        <View style={styles.rubricLoading}>
+          <ActivityIndicator color={theme.colors.primary} />
+          <Text style={styles.rubricLoadingText}>Loading rubrics…</Text>
+        </View>
+      ) : rubrics.length > 0 ? (
+        <View style={styles.rubricPicker}>
+          <Text style={styles.rubricLabel}>Grading rubric</Text>
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityState={{ expanded: isRubricPickerOpen }}
+            disabled={isUploading}
+            onPress={() => setIsRubricPickerOpen((isOpen) => !isOpen)}
+            style={styles.rubricPickerButton}
+          >
+            <Text style={[styles.rubricPickerText, !selectedRubricId && styles.rubricPlaceholder]}>
+              {rubrics.find((rubric) => rubric.id === selectedRubricId)?.title ?? 'Choose a rubric'}
+            </Text>
+            <Ionicons name={isRubricPickerOpen ? 'chevron-up' : 'chevron-down'} size={20} color="#64748b" />
+          </TouchableOpacity>
+          {isRubricPickerOpen && (
+            <View style={styles.rubricOptions}>
+              {rubrics.map((rubric) => (
+                <TouchableOpacity
+                  key={rubric.id}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: rubric.id === selectedRubricId }}
+                  onPress={() => {
+                    setSelectedRubricId(rubric.id);
+                    setIsRubricPickerOpen(false);
+                    setErrorMessage('');
+                  }}
+                  style={[styles.rubricOption, rubric.id === selectedRubricId && styles.selectedRubricOption]}
+                >
+                  <Text style={[styles.rubricOptionText, rubric.id === selectedRubricId && styles.selectedRubricOptionText]}>
+                    {rubric.title}
+                  </Text>
+                  {rubric.id === selectedRubricId && <Ionicons name="checkmark" size={18} color={theme.colors.primary} />}
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+        </View>
+      ) : null}
 
       <TouchableOpacity
         accessibilityRole="button"
@@ -227,9 +280,9 @@ export default function ScanScreen() {
       <View style={styles.actions}>
         <TouchableOpacity
           accessibilityRole="button"
-          disabled={isLoadingRubric || !rubricId || isUploading || segmentCount === 0}
+          disabled={isLoadingRubric || !selectedRubricId || isUploading || segmentCount === 0}
           onPress={() => void finishScan()}
-          style={[styles.doneButton, (isLoadingRubric || !rubricId || isUploading || segmentCount === 0) && styles.disabledButton]}
+          style={[styles.doneButton, (isLoadingRubric || !selectedRubricId || isUploading || segmentCount === 0) && styles.disabledButton]}
         >
           {isUploading ? <ActivityIndicator color="#fff" /> : <Text style={styles.scanButtonText}>Done</Text>}
         </TouchableOpacity>
@@ -309,6 +362,72 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff8e6',
     color: '#805b00',
     textAlign: 'center',
+  },
+  rubricLoading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+    gap: 8,
+  },
+  rubricLoadingText: {
+    color: '#64748b',
+  },
+  rubricPicker: {
+    marginBottom: 12,
+  },
+  rubricLabel: {
+    marginBottom: 6,
+    color: '#475569',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  rubricPickerButton: {
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 13,
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    borderRadius: 9,
+    backgroundColor: '#fff',
+  },
+  rubricPickerText: {
+    color: '#1e293b',
+    fontSize: 15,
+  },
+  rubricPlaceholder: {
+    color: '#94a3b8',
+  },
+  rubricOptions: {
+    maxHeight: 190,
+    marginTop: 4,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    borderRadius: 9,
+    backgroundColor: '#fff',
+  },
+  rubricOption: {
+    minHeight: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 13,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+  },
+  selectedRubricOption: {
+    backgroundColor: '#eff6ff',
+  },
+  rubricOptionText: {
+    color: '#334155',
+    fontSize: 14,
+  },
+  selectedRubricOptionText: {
+    color: theme.colors.primary,
+    fontWeight: '600',
   },
   scanButton: {
     width: '100%',
