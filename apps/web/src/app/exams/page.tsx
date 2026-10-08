@@ -93,6 +93,12 @@ export default function ExamsPage() {
               </div>
               <div className="mt-4 flex justify-end">
                 <Link
+                  href={`/exams/${exam.id}/edit`}
+                  className="mr-3 rounded-md border border-gray-300 px-3 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-100"
+                >
+                  Edit
+                </Link>
+                <Link
                   href={`/exams/${exam.id}/results`}
                   className="rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700"
                 >
