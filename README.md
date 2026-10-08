@@ -4,10 +4,10 @@
 
 Set `NEXTAUTH_SECRET` to a long, random secret and `GOOGLE_CLIENT_ID` to the
 client ID of a Google OAuth web application in the web app environment. Add
-the app's origin to the OAuth client's authorized JavaScript origins. The web
-app uses Google Identity Services to verify sign-in credentials and stores its
-own signed session cookie; no redirect URI or Google client secret is used by
-this sign-in flow.
+the app's callback URL (`/api/auth/callback/google`) to the OAuth client's
+authorized redirect URIs, and set `GOOGLE_CLIENT_SECRET`. The web app uses
+Google's OAuth authorization-code flow with PKCE and stores its own signed
+session cookie.
 
 ## Paystack payments
 

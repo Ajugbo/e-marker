@@ -2,7 +2,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { prisma } from "@exam-marker/database";
 import type { NextRequest, NextResponse } from "next/server";
 
-const SESSION_COOKIE = "exam_marker_session";
+export const SESSION_COOKIE_NAME = "exam_marker_session";
 const SESSION_SECONDS = 60 * 60 * 24 * 7;
 
 type SessionClaims = {
@@ -45,7 +45,10 @@ function readSessionToken(token: string): SessionClaims | null {
 }
 
 export async function getRequestUser(request: NextRequest) {
-  const token = request.cookies.get(SESSION_COOKIE)?.value;
+  return getSessionUser(request.cookies.get(SESSION_COOKIE_NAME)?.value);
+}
+
+export async function getSessionUser(token: string | undefined) {
   if (!token) return null;
   const claims = readSessionToken(token);
   if (!claims) return null;
@@ -53,7 +56,7 @@ export async function getRequestUser(request: NextRequest) {
 }
 
 export function setSessionCookie(response: NextResponse, token: string) {
-  response.cookies.set(SESSION_COOKIE, token, {
+  response.cookies.set(SESSION_COOKIE_NAME, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",

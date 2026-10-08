@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import Link from "next/link";
-import AuthButton from "./auth-button";
+import { getSessionUser, SESSION_COOKIE_NAME } from "@/lib/auth";
 import SidebarNavigation from "./sidebar-navigation";
 import "./globals.css";
 
@@ -9,7 +10,9 @@ export const metadata: Metadata = {
   description: "Exam grading operations dashboard",
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const user = await getSessionUser(cookies().get(SESSION_COOKIE_NAME)?.value);
+
   return (
     <html lang="en">
       <body>
@@ -30,9 +33,31 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             </div>
           </aside>
           <main className="min-w-0 bg-blue-50/40 px-5 py-7 sm:px-8 lg:px-12 lg:py-10 print:bg-white print:px-0 print:py-0">
-            <div className="mb-6 flex justify-end print:hidden">
-              <AuthButton />
-            </div>
+            <header className="mb-6 flex min-h-14 flex-wrap items-center justify-between gap-3 print:hidden">
+              <span className="text-sm font-semibold text-blue-950">E-Marker workspace</span>
+              {user ? (
+                <div className="flex max-w-full items-center gap-3">
+                  <span className="max-w-[55vw] truncate text-sm text-slate-700 sm:max-w-xs">
+                    {user.email}
+                  </span>
+                  <form action="/api/auth/signout" method="post">
+                    <button
+                      type="submit"
+                      className="rounded-md border border-blue-200 bg-white px-3 py-2 text-sm font-semibold text-blue-800 hover:bg-blue-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
+                    >
+                      Sign Out
+                    </button>
+                  </form>
+                </div>
+              ) : (
+                <Link
+                  href="/api/auth/signin"
+                  className="inline-flex min-h-11 items-center justify-center rounded-md bg-blue-700 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
+                >
+                  Sign Up / Login
+                </Link>
+              )}
+            </header>
             {children}
           </main>
         </div>
