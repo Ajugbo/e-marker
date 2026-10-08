@@ -19,6 +19,12 @@ type AccountSummary = {
   subscriptionStatus: "ACTIVE" | "CANCELLED" | "PAST_DUE";
 };
 
+const planLabel: Record<AccountSummary["plan"], string> = {
+  FREE: "Free",
+  BASIC: "Basic",
+  PRO: "Pro",
+};
+
 export default function SidebarNavigation() {
   const pathname = usePathname();
   const [account, setAccount] = useState<AccountSummary | null>(null);
@@ -65,14 +71,14 @@ export default function SidebarNavigation() {
       })}
       </nav>
       {account && (
-        <Link href="/settings/billing" className="mt-5 hidden rounded-lg border border-white/15 bg-white/10 p-4 text-white hover:bg-white/15 lg:block">
+        <Link href="/settings/billing" className="mt-3 rounded-lg border border-white/15 bg-white/10 p-3 text-white hover:bg-white/15 lg:mt-5 lg:p-4">
           <span className="flex items-center justify-between text-xs text-blue-100/75">
-            <span>Current plan</span><span className="font-semibold text-white">{account.plan}</span>
+            <span>Current plan</span><span className="font-semibold text-white">{planLabel[account.plan]}</span>
           </span>
-          <span className="mt-3 flex items-center justify-between text-xs text-blue-100/75">
-            <span>Credits</span><span className="font-semibold text-white">{account.credits}</span>
+          <span className="mt-3 hidden items-center justify-between text-xs text-blue-100/75 lg:flex">
+            <span>Pay-as-you-go credits</span><span className="font-semibold text-white">{account.credits}</span>
           </span>
-          <span className="mt-3 block text-[10px] text-blue-100/60">
+          <span className="mt-3 hidden text-[10px] text-blue-100/60 lg:block">
             {account.subscriptionStatus.replace("_", " ")}
           </span>
         </Link>

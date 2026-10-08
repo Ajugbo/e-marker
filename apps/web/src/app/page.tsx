@@ -14,7 +14,6 @@ const metrics = [
   { label: "Active exams", value: "08", note: "Across 4 classes", color: "bg-mint" },
   { label: "Scripts received", value: "246", note: "This term", color: "bg-[#f9e5d9]" },
   { label: "Awaiting review", value: "19", note: "AI-graded scripts", color: "bg-[#e8e9d5]" },
-  { label: "Credits remaining", value: "1,284", note: "Across your account", color: "bg-[#dfe9ee]" },
 ];
 
 const activity = [
@@ -27,9 +26,10 @@ export default function DashboardPage() {
   const [greeting, setGreeting] = useState<string | null>(null);
   const [currentDate, setCurrentDate] = useState<string | null>(null);
   const [billingSummary, setBillingSummary] = useState<{
-    plan: string;
+    plan: "FREE" | "BASIC" | "PRO";
     credits: number;
     subscriptionStatus: string;
+    monthlyLimit: number | null;
   } | null>(null);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
 
@@ -47,7 +47,12 @@ export default function DashboardPage() {
     void fetch("/api/payments/billing", { cache: "no-store", signal: controller.signal })
       .then(async (response) => {
         if (!response.ok) return;
-        const data = await response.json() as { plan: string; credits: number; subscriptionStatus: string };
+        const data = await response.json() as {
+          plan: "FREE" | "BASIC" | "PRO";
+          credits: number;
+          subscriptionStatus: string;
+          monthlyLimit: number | null;
+        };
         setBillingSummary(data);
       })
       .catch((error: unknown) => {
@@ -81,7 +86,23 @@ export default function DashboardPage() {
         </p>
       )}
 
-      <section aria-label="Workspace metrics" className="grid gap-px overflow-hidden rounded-lg border border-primary/15 bg-primary/15 sm:grid-cols-2 xl:grid-cols-4">
+      {billingSummary && (
+        <section aria-label="Subscription plan" className="mt-6 flex flex-col gap-3 rounded-lg border border-primary/20 bg-blue-50 p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-forest">Your subscription benefit</p>
+            <h2 className="mt-1 text-xl font-semibold text-ink">
+              {billingSummary.plan === "PRO"
+                ? "Pro Plan: Unlimited scripts"
+                : `${billingSummary.plan === "BASIC" ? "Basic" : "Free"} Plan: ${billingSummary.monthlyLimit ?? (billingSummary.plan === "BASIC" ? 100 : 10)} scripts/month`}
+            </h2>
+          </div>
+          <p className="text-sm text-ink/60">
+            Subscription status: {billingSummary.subscriptionStatus.replace("_", " ").toLowerCase()}
+          </p>
+        </section>
+      )}
+
+      <section aria-label="Workspace metrics" className="mt-6 grid gap-px overflow-hidden rounded-lg border border-primary/15 bg-primary/15 sm:grid-cols-2 xl:grid-cols-3">
         {metrics.map((metric) => (
           <article key={metric.label} className="bg-blue-50/70 p-5">
             <div className="flex items-center justify-between gap-3">
@@ -89,15 +110,19 @@ export default function DashboardPage() {
               <span className={`h-2.5 w-2.5 rounded-full ${metric.color}`} />
             </div>
             <p className="mt-5 text-3xl font-semibold tabular-nums text-ink">
-              {metric.label === "Credits remaining" ? (billingSummary?.credits ?? "—") : metric.value}
+              {metric.value}
             </p>
-            <p className="mt-1 text-xs text-ink/45">
-              {metric.label === "Credits remaining"
-                ? `Current plan: ${billingSummary?.plan ?? "Loading"} · ${billingSummary?.subscriptionStatus ?? "—"}`
-                : metric.note}
-            </p>
+            <p className="mt-1 text-xs text-ink/45">{metric.note}</p>
           </article>
         ))}
+      </section>
+
+      <section aria-label="Pay-as-you-go credits" className="mt-4 flex items-center justify-between gap-4 rounded-lg border border-primary/10 bg-white/70 px-5 py-4">
+        <div>
+          <h2 className="text-sm font-medium text-ink/70">Pay-as-you-go Credits</h2>
+          <p className="mt-1 text-xs text-ink/45">Purchased separately from your subscription plan.</p>
+        </div>
+        <p className="text-2xl font-semibold tabular-nums text-ink/75">{billingSummary?.credits ?? "—"}</p>
       </section>
 
       <section className="mt-10">
