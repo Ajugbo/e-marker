@@ -3,6 +3,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import ExamAssistantChat from '@/components/ExamAssistantChat';
 
 interface ExamResponse {
   exam?: {
@@ -234,6 +235,15 @@ export default function EditExamPage({ params }: { params: { id: string } }) {
             className="w-full rounded-md border border-gray-300 px-4 py-2 font-mono text-sm"
           />
         </div>
+
+        <ExamAssistantChat
+          examContext={{
+            title: institution,
+            subject,
+            classLevel,
+            rubric,
+          }}
+        />
 
         <div className="flex gap-4">
           <button
