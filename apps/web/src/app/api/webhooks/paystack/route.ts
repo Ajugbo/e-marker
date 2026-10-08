@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
+import crypto, { timingSafeEqual } from "node:crypto";
 import { PaymentStatus, prisma } from "@exam-marker/database";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -18,18 +18,19 @@ const webhookSchema = z.object({
 
 function hasValidSignature(body: string, signature: string | null, secret: string) {
   if (!signature || !/^[a-f\d]{128}$/i.test(signature)) return false;
-  const expected = createHmac("sha512", secret).update(body).digest();
+  const expectedHash = crypto.createHmac("sha512", secret).update(body).digest("hex");
+  const expected = Buffer.from(expectedHash, "hex");
   const received = Buffer.from(signature, "hex");
   return expected.length === received.length && timingSafeEqual(expected, received);
 }
 
 export async function POST(request: NextRequest) {
   const rawBody = await request.text();
-  const secret = process.env.PAYSTACK_WEBHOOK_SECRET;
+  const secret = process.env.PAYSTACK_SECRET_KEY;
   const signature = request.headers.get("x-paystack-signature");
 
   if (!secret) {
-    console.error("[webhook:paystack] PAYSTACK_WEBHOOK_SECRET is not configured");
+    console.error("[webhook:paystack] PAYSTACK_SECRET_KEY is not configured");
     return NextResponse.json({ error: "Webhook is not configured" }, { status: 500 });
   }
   if (!hasValidSignature(rawBody, signature, secret)) {
