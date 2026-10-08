@@ -12,10 +12,7 @@ model User {
   email              String             @unique
   name               String
   role               String             @default("teacher")
-  plan               Plan               @default(FREE)
-  credits            Int                @default(0)
-  subscriptionStatus SubscriptionStatus @default(ACTIVE)
-  subscriptionEndsAt DateTime?
+  credits            Int                @default(50)
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
 
@@ -108,7 +105,7 @@ model Transaction {
   currency  String        @default("NGN")
   status    PaymentStatus @default(pending)
   reference String        @unique
-  type      PaymentType
+  type      String
   createdAt DateTime      @default(now())
 
   user User @relation(fields: [userId], references: [id])
@@ -117,27 +114,10 @@ model Transaction {
   @@map("payment_transactions")
 }
 
-enum Plan {
-  FREE
-  BASIC
-  PRO
-}
-
-enum SubscriptionStatus {
-  ACTIVE
-  CANCELLED
-  PAST_DUE
-}
-
 enum PaymentStatus {
   pending
   success
   failed
-}
-
-enum PaymentType {
-  credit_purchase
-  subscription
 }
 
 enum ReviewStatus {

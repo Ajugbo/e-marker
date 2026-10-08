@@ -31,6 +31,14 @@ export async function POST(request: NextRequest) {
       create: {
         email: profile.email,
         name: profile.name || profile.email.split("@")[0],
+        credits: 50,
+        transactions: {
+          create: {
+            amount: 50,
+            type: "trial",
+            description: "Free trial credits",
+          },
+        },
       },
       update: { name: profile.name || profile.email.split("@")[0] },
     });

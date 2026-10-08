@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { usePaystackPayment } from "react-paystack";
 
-type Product = "BASIC" | "PRO" | "CREDITS";
+type Product = "STANDARD" | "PREMIUM" | "TOPUP";
 type Props = {
   product: Product;
   label: string;

@@ -327,9 +327,9 @@ export default function ExamResultsPage({ params }: { params: { id: string } }) 
       {gradeError && (
         <div role="alert" className="rounded-md border border-coral/30 bg-white p-4 text-sm text-coral print:hidden">
           <p>{gradeError}</p>
-          {(gradeError.includes("monthly allowance") || gradeError.includes("credits")) && (
+          {gradeError.includes("credits") && (
             <a href="/pricing" className="mt-2 inline-block font-semibold text-primary underline">
-              View plans and buy credits
+              Buy Credits
             </a>
           )}
         </div>

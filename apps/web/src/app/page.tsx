@@ -26,10 +26,7 @@ export default function DashboardPage() {
   const [greeting, setGreeting] = useState<string | null>(null);
   const [currentDate, setCurrentDate] = useState<string | null>(null);
   const [billingSummary, setBillingSummary] = useState<{
-    plan: "FREE" | "BASIC" | "PRO";
     credits: number;
-    subscriptionStatus: string;
-    monthlyLimit: number | null;
   } | null>(null);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
 
@@ -48,10 +45,7 @@ export default function DashboardPage() {
       .then(async (response) => {
         if (!response.ok) return;
         const data = await response.json() as {
-          plan: "FREE" | "BASIC" | "PRO";
           credits: number;
-          subscriptionStatus: string;
-          monthlyLimit: number | null;
         };
         setBillingSummary(data);
       })
@@ -82,23 +76,21 @@ export default function DashboardPage() {
 
       {paymentSuccess && (
         <p role="status" className="mt-6 rounded-md border border-green-200 bg-green-50 p-4 text-sm text-green-800">
-          Payment received. Your plan or credits will appear once Paystack confirms the transaction.
+          Payment received. Your credits will appear once Paystack confirms the transaction.
         </p>
       )}
 
       {billingSummary && (
-        <section aria-label="Subscription plan" className="mt-6 flex flex-col gap-3 rounded-lg border border-primary/20 bg-blue-50 p-5 sm:flex-row sm:items-center sm:justify-between">
+        <section aria-label="Credits remaining" className="mt-6 flex flex-col gap-3 rounded-lg border border-primary/20 bg-blue-50 p-5 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-forest">Your subscription benefit</p>
-            <h2 className="mt-1 text-xl font-semibold text-ink">
-              {billingSummary.plan === "PRO"
-                ? "Pro Plan: Unlimited scripts"
-                : `${billingSummary.plan === "BASIC" ? "Basic" : "Free"} Plan: ${billingSummary.monthlyLimit ?? (billingSummary.plan === "BASIC" ? 100 : 10)} scripts/month`}
-            </h2>
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-forest">Your grading balance</p>
+            <h2 className="mt-1 text-2xl font-semibold text-ink">Credits Remaining: {billingSummary.credits}</h2>
           </div>
-          <p className="text-sm text-ink/60">
-            Subscription status: {billingSummary.subscriptionStatus.replace("_", " ").toLowerCase()}
-          </p>
+          {billingSummary.credits <= 20 && (
+            <Link href="/pricing" className="w-fit rounded-md bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700">
+              Buy More Credits
+            </Link>
+          )}
         </section>
       )}
 
@@ -115,14 +107,6 @@ export default function DashboardPage() {
             <p className="mt-1 text-xs text-ink/45">{metric.note}</p>
           </article>
         ))}
-      </section>
-
-      <section aria-label="Pay-as-you-go credits" className="mt-4 flex items-center justify-between gap-4 rounded-lg border border-primary/10 bg-white/70 px-5 py-4">
-        <div>
-          <h2 className="text-sm font-medium text-ink/70">Pay-as-you-go Credits</h2>
-          <p className="mt-1 text-xs text-ink/45">Purchased separately from your subscription plan.</p>
-        </div>
-        <p className="text-2xl font-semibold tabular-nums text-ink/75">{billingSummary?.credits ?? "—"}</p>
       </section>
 
       <section className="mt-10">

@@ -2,7 +2,7 @@ import { PaymentStatus, prisma } from "@exam-marker/database";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getRequestUser } from "@/lib/auth";
-import { addOneMonth, CREDIT_BUNDLE, getPlanForSubscriptionAmount } from "@/lib/payments";
+import { getCreditBundleForAmount } from "@/lib/payments";
 
 export const dynamic = "force-dynamic";
 
@@ -83,13 +83,10 @@ export async function GET(request: NextRequest) {
       return redirectTo(request, "/pricing?payment=failed");
     }
 
-    const plan = payment.type === "subscription"
-      ? getPlanForSubscriptionAmount(payment.amount)
+    const bundle = payment.type === "credit_purchase"
+      ? getCreditBundleForAmount(payment.amount)
       : null;
-    if (
-      (payment.type === "credit_purchase" && payment.amount !== CREDIT_BUNDLE.amount)
-      || (payment.type === "subscription" && plan === null)
-    ) {
+    if (!bundle) {
       console.error("[payments:verify] Payment product is invalid", {
         reference: payment.reference,
       });
@@ -106,37 +103,17 @@ export async function GET(request: NextRequest) {
       if (payment.type === "credit_purchase") {
         await transaction.user.update({
           where: { id: payment.userId },
-          data: { credits: { increment: CREDIT_BUNDLE.credits } },
+          data: { credits: { increment: bundle.credits } },
         });
         await transaction.creditTransaction.create({
           data: {
             userId: payment.userId,
-            amount: CREDIT_BUNDLE.credits,
+            amount: bundle.credits,
             type: "purchase",
-            description: `Paystack credit bundle (${payment.reference})`,
+            description: `Paystack ${bundle.credits}-credit bundle (${payment.reference})`,
           },
         });
-        return true;
       }
-
-      const account = await transaction.user.findUniqueOrThrow({
-        where: { id: payment.userId },
-        select: { subscriptionEndsAt: true },
-      });
-      const now = new Date();
-      const startsAt = account.subscriptionEndsAt && account.subscriptionEndsAt > now
-        ? account.subscriptionEndsAt
-        : now;
-      const subscriptionPlan = getPlanForSubscriptionAmount(payment.amount);
-      if (!subscriptionPlan) throw new Error("Subscription payment amount is invalid");
-      await transaction.user.update({
-        where: { id: payment.userId },
-        data: {
-          plan: subscriptionPlan,
-          subscriptionStatus: "ACTIVE",
-          subscriptionEndsAt: addOneMonth(startsAt),
-        },
-      });
       return true;
     });
 

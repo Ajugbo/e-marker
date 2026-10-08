@@ -1,31 +1,15 @@
-import type { PaymentType, Plan } from "@exam-marker/database";
-
-export const CREDIT_BUNDLE = {
-  amount: 50_000,
-  credits: 20,
+export const CREDIT_BUNDLES = {
+  STANDARD: { amount: 250_000, credits: 150 },
+  PREMIUM: { amount: 500_000, credits: 350 },
+  TOPUP: { amount: 50_000, credits: 20 },
 } as const;
 
-export const SUBSCRIPTION_PRICES = {
-  BASIC: 200_000,
-  PRO: 500_000,
-} as const satisfies Record<Exclude<Plan, "FREE">, number>;
+export type CreditProduct = keyof typeof CREDIT_BUNDLES;
 
-export function getPaymentType(product: "CREDITS" | "BASIC" | "PRO"): PaymentType {
-  return product === "CREDITS" ? "credit_purchase" : "subscription";
+export function getCreditBundle(product: CreditProduct) {
+  return CREDIT_BUNDLES[product];
 }
 
-export function getPlanForSubscriptionAmount(amount: number): Exclude<Plan, "FREE"> | null {
-  if (amount === SUBSCRIPTION_PRICES.BASIC) return "BASIC";
-  if (amount === SUBSCRIPTION_PRICES.PRO) return "PRO";
-  return null;
-}
-
-export function addOneMonth(date: Date) {
-  const result = new Date(date);
-  const dayOfMonth = result.getDate();
-  result.setDate(1);
-  result.setMonth(result.getMonth() + 1);
-  const lastDayOfMonth = new Date(result.getFullYear(), result.getMonth() + 1, 0).getDate();
-  result.setDate(Math.min(dayOfMonth, lastDayOfMonth));
-  return result;
+export function getCreditBundleForAmount(amount: number) {
+  return Object.values(CREDIT_BUNDLES).find((bundle) => bundle.amount === amount) ?? null;
 }

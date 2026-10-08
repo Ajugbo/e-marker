@@ -3,13 +3,13 @@ import { prisma } from "@exam-marker/database";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getRequestUser } from "@/lib/auth";
-import { CREDIT_BUNDLE, getPaymentType, SUBSCRIPTION_PRICES } from "@/lib/payments";
+import { getCreditBundle } from "@/lib/payments";
 import { ApiError, errorResponse, readJsonBody } from "@/lib/http";
 
 export const dynamic = "force-dynamic";
 
 const initializeSchema = z.object({
-  product: z.enum(["CREDITS", "BASIC", "PRO"]),
+  product: z.enum(["STANDARD", "PREMIUM", "TOPUP"]),
 }).strict();
 
 export async function POST(request: NextRequest) {
@@ -17,25 +17,23 @@ export async function POST(request: NextRequest) {
     const user = await getRequestUser(request);
     if (!user) throw new ApiError("Please sign in to continue", 401);
     const { product } = await readJsonBody(request, initializeSchema);
-    const amount = product === "CREDITS"
-      ? CREDIT_BUNDLE.amount
-      : SUBSCRIPTION_PRICES[product];
+    const bundle = getCreditBundle(product);
     const reference = `em_${randomUUID()}`;
 
     await prisma.transaction.create({
       data: {
         userId: user.id,
-        amount,
+        amount: bundle.amount,
         currency: "NGN",
         status: "pending",
         reference,
-        type: getPaymentType(product),
+        type: "credit_purchase",
       },
     });
 
     return NextResponse.json({
       reference,
-      amount,
+      amount: bundle.amount,
       currency: "NGN",
       email: user.email,
       name: user.name,

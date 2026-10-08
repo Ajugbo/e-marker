@@ -14,15 +14,7 @@ const navigation = [
 ] as const;
 
 type AccountSummary = {
-  plan: "FREE" | "BASIC" | "PRO";
   credits: number;
-  subscriptionStatus: "ACTIVE" | "CANCELLED" | "PAST_DUE";
-};
-
-const planLabel: Record<AccountSummary["plan"], string> = {
-  FREE: "Free",
-  BASIC: "Basic",
-  PRO: "Pro",
 };
 
 export default function SidebarNavigation() {
@@ -71,17 +63,10 @@ export default function SidebarNavigation() {
       })}
       </nav>
       {account && (
-        <Link href="/settings/billing" className="mt-3 rounded-lg border border-white/15 bg-white/10 p-3 text-white hover:bg-white/15 lg:mt-5 lg:p-4">
-          <span className="flex items-center justify-between text-xs text-blue-100/75">
-            <span>Current plan</span><span className="font-semibold text-white">{planLabel[account.plan]}</span>
-          </span>
-          <span className="mt-3 hidden items-center justify-between text-xs text-blue-100/75 lg:flex">
-            <span>Pay-as-you-go credits</span><span className="font-semibold text-white">{account.credits}</span>
-          </span>
-          <span className="mt-3 hidden text-[10px] text-blue-100/60 lg:block">
-            {account.subscriptionStatus.replace("_", " ")}
-          </span>
-        </Link>
+        <div className="mt-3 rounded-lg border border-white/15 bg-white/10 p-3 text-white lg:mt-5 lg:p-4">
+          <p className="text-xs text-blue-100/75">Credits: <span className="font-semibold text-white">{account.credits}</span></p>
+          <Link href="/pricing" className="mt-2 inline-block text-[10px] font-semibold text-blue-100 underline hover:text-white">Buy Credits</Link>
+        </div>
       )}
     </>
   );
