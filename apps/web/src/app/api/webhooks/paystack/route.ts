@@ -1,4 +1,4 @@
-import crypto, { timingSafeEqual } from "node:crypto";
+import { createHmac, timingSafeEqual } from "node:crypto";
 import { PaymentStatus, prisma } from "@exam-marker/database";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -18,7 +18,7 @@ const webhookSchema = z.object({
 
 function hasValidSignature(body: string, signature: string | null, secret: string) {
   if (!signature || !/^[a-f\d]{128}$/i.test(signature)) return false;
-  const expectedHash = crypto.createHmac("sha512", secret).update(body).digest("hex");
+  const expectedHash = createHmac("sha512", secret).update(body).digest("hex");
   const expected = Buffer.from(expectedHash, "hex");
   const received = Buffer.from(signature, "hex");
   return expected.length === received.length && timingSafeEqual(expected, received);
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
   }
   if (!hasValidSignature(rawBody, signature, secret)) {
     console.warn("[webhook:paystack] Rejected webhook with invalid signature");
-    return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
+    return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
   }
 
   let parsedBody: unknown;
