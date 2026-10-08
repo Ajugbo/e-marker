@@ -43,9 +43,13 @@ model Exam {
 model Script {
   id               String       @id @default(uuid())
   examId           String
-  studentName      String
+  studentName      String?
   matricNumber     String
-  class            String
+  class            String?
+  institution      String?
+  term             String?
+  examNumber       String?
+  course           String?
   totalPages       Int          @default(0)
   status           String       @default("pending")
   reviewStatus     ReviewStatus @default(PENDING)
