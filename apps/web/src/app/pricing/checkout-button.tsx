@@ -56,7 +56,17 @@ export default function CheckoutButton({ product, label, className }: Props) {
             }],
           },
         },
-        onSuccess: () => window.location.assign("/dashboard?payment=success"),
+        onSuccess: (response?: { reference?: unknown }) => {
+          const reference = response?.reference;
+          if (typeof reference !== "string" || reference.length === 0) {
+            setError("Payment completed, but its reference could not be verified.");
+            setBusy(false);
+            return;
+          }
+          window.location.assign(
+            `/api/payments/verify?reference=${encodeURIComponent(reference)}`,
+          );
+        },
         onClose: () => setBusy(false),
       });
     } catch (checkoutError) {
