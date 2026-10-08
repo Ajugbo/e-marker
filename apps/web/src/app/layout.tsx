@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import AuthButton from "./auth-button";
 import SidebarNavigation from "./sidebar-navigation";
 import "./globals.css";
 
@@ -28,7 +29,12 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
               <p className="mt-1">Teacher administration</p>
             </div>
           </aside>
-          <main className="min-w-0 bg-blue-50/40 px-5 py-7 sm:px-8 lg:px-12 lg:py-10 print:bg-white print:px-0 print:py-0">{children}</main>
+          <main className="min-w-0 bg-blue-50/40 px-5 py-7 sm:px-8 lg:px-12 lg:py-10 print:bg-white print:px-0 print:py-0">
+            <div className="mb-6 flex justify-end print:hidden">
+              <AuthButton />
+            </div>
+            {children}
+          </main>
         </div>
       </body>
     </html>

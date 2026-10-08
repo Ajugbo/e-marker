@@ -1,5 +1,14 @@
 # E-Marker
 
+## Google sign-in
+
+Set `NEXTAUTH_SECRET` to a long, random secret and `GOOGLE_CLIENT_ID` to the
+client ID of a Google OAuth web application in the web app environment. Add
+the app's origin to the OAuth client's authorized JavaScript origins. The web
+app uses Google Identity Services to verify sign-in credentials and stores its
+own signed session cookie; no redirect URI or Google client secret is used by
+this sign-in flow.
+
 ## Paystack payments
 
 Configure `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY`, `PAYSTACK_SECRET_KEY`, and

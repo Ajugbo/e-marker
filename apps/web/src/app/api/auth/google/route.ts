@@ -4,6 +4,8 @@ import { z } from "zod";
 import { createSessionToken, setSessionCookie } from "@/lib/auth";
 import { ApiError, errorResponse, readJsonBody } from "@/lib/http";
 
+export const dynamic = "force-dynamic";
+
 const signInSchema = z.object({ credential: z.string().min(1, "Google credential is required") });
 const googleProfileSchema = z.object({
   sub: z.string().min(1),
@@ -12,6 +14,16 @@ const googleProfileSchema = z.object({
   name: z.string().optional(),
   aud: z.string(),
 });
+
+export async function GET() {
+  try {
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    if (!clientId) throw new ApiError("Google Sign-In is not configured", 500);
+    return NextResponse.json({ clientId });
+  } catch (error) {
+    return errorResponse(error, "auth/google/config");
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
