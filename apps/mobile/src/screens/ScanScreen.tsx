@@ -6,10 +6,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as VideoThumbnails from 'expo-video-thumbnails';
-import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../constants/api';
 import { theme } from '../constants/theme';
 import type { ProcessingResult, RootStackParamList } from '../types/navigation';
+import { getUserToken } from '../utils/tokenStorage';
 
 const FRAME_TIMES_MS = [250, 750, 1500];
 
@@ -41,7 +41,7 @@ export default function ScanScreen() {
 
     const loadRubrics = async () => {
       try {
-        const token = await SecureStore.getItemAsync('userToken');
+        const token = await getUserToken();
         if (!token) throw new Error('Please sign in again to load your grading rubrics.');
         const response = await fetch(`${API_BASE_URL}/api/exams`, {
           headers: {
@@ -176,7 +176,7 @@ export default function ScanScreen() {
       await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
       const frames = await extractFrames();
       setStatusMessage('Sending pages for grading…');
-      const token = await SecureStore.getItemAsync('userToken');
+      const token = await getUserToken();
       if (!token) throw new Error('Please sign in again to process this scan.');
       const response = await fetch(`${API_BASE_URL}/api/grading/process`, {
         method: 'POST',

@@ -2,9 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { Image, Platform, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
 import * as Google from 'expo-auth-session/providers/google';
 import type { AuthSessionResult } from 'expo-auth-session';
-import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../constants/api';
 import { theme } from '../constants/theme';
+import { setUserToken } from '../utils/tokenStorage';
 
 type LoginScreenProps = {
   onAuthenticated: () => void;
@@ -76,7 +76,7 @@ function GoogleSignIn({ onAuthenticated }: LoginScreenProps) {
           throw new Error('The sign-in response did not include a session token.');
         }
 
-        await SecureStore.setItemAsync('userToken', loginResult.token);
+        await setUserToken(loginResult.token);
         onAuthenticated();
       } catch (error) {
         setErrorMessage(error instanceof Error ? error.message : 'Unable to sign in.');

@@ -2,10 +2,10 @@ import { useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NavigationProp, RouteProp } from '@react-navigation/native';
-import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../constants/api';
 import { theme } from '../constants/theme';
 import type { RootStackParamList, ScriptMetadata } from '../types/navigation';
+import { getUserToken } from '../utils/tokenStorage';
 
 const metadataFields: { key: keyof ScriptMetadata; label: string }[] = [
   { key: 'studentName', label: 'Student name' },
@@ -33,7 +33,7 @@ export default function ResultScreen() {
     setIsSaving(true);
     setErrorMessage('');
     try {
-      const token = await SecureStore.getItemAsync('userToken');
+      const token = await getUserToken();
       if (!token) throw new Error('Please sign in again to save this grade.');
       const response = await fetch(`${API_BASE_URL}/api/grading/confirm`, {
         method: 'POST',

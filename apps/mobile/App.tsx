@@ -6,9 +6,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
-import * as SecureStore from 'expo-secure-store';
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { theme } from './src/constants/theme';
+import { getUserToken } from './src/utils/tokenStorage';
 
 import LoginScreen from './src/screens/LoginScreen';
 import ScanScreen from './src/screens/ScanScreen';
@@ -67,7 +67,7 @@ export default function App() {
   const checkAuthentication = React.useCallback(async () => {
     setAuthError('');
     try {
-      const token = await SecureStore.getItemAsync('userToken');
+      const token = await getUserToken();
       setIsAuthenticated(Boolean(token));
     } catch (error) {
       setAuthError(error instanceof Error ? error.message : 'Could not check your sign-in status.');
