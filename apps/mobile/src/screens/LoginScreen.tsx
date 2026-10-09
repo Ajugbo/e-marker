@@ -98,6 +98,7 @@ function GoogleSignIn({ onAuthenticated }: LoginScreenProps) {
         disabled={!request || isSigningIn}
         onPress={() => {
           setErrorMessage('');
+             console.log("EXACT URL BEING SENT TO GOOGLE:", request?.url);
           void promptAsync();
         }}
         style={[styles.googleButton, (!request || isSigningIn) && styles.disabledButton]}
