@@ -62,17 +62,20 @@ export default function ExamAssistantChat({
     setIsSending(true);
 
     try {
-      const response = await fetch('/api/chat/exam-assistant', {
+      const endpoint = "/api/chat/exam-assistant";
+      const payload = {
+        message: content,
+        context: {
+          subject: examContext.subject,
+          question: activeQuestionText,
+          markingScheme: activeMarkingScheme,
+        },
+      };
+      console.log("Sending to API:", endpoint, payload);
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: content,
-          context: {
-            subject: examContext.subject,
-            question: activeQuestionText,
-            markingScheme: activeMarkingScheme,
-          },
-        }),
+        body: JSON.stringify(payload),
       });
       const data = (await response.json()) as { reply?: string; error?: string };
       if (!response.ok) throw new Error(data.error || 'Failed to contact the exam assistant.');
