@@ -2,7 +2,7 @@
   "expo": {
     "name": "E-Marker",
     "slug": "mobile",
-    "scheme": "com.emarker.app",
+    "scheme": "emarker",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
