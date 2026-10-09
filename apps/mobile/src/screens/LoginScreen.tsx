@@ -98,7 +98,24 @@ function GoogleSignIn({ onAuthenticated }: LoginScreenProps) {
         disabled={!request || isSigningIn}
         onPress={() => {
           setErrorMessage('');
-             console.log("EXACT URL BEING SENT TO GOOGLE:", request?.url);
+          console.log('REDIRECT URI GENERATED:', redirectUri);
+          const authorizationUrl = request?.url ? new URL(request.url) : null;
+          const requestParameters = authorizationUrl
+            ? Object.fromEntries(authorizationUrl.searchParams.entries())
+            : null;
+          if (requestParameters) {
+            for (const key of Object.keys(requestParameters)) {
+              if (/state|nonce|token|secret|verifier/i.test(key)) {
+                requestParameters[key] = '[REDACTED]';
+              }
+            }
+          }
+          console.log('REQUEST OBJECT:', {
+            authorizationEndpoint: authorizationUrl
+              ? `${authorizationUrl.origin}${authorizationUrl.pathname}`
+              : null,
+            parameters: requestParameters,
+          });
           void promptAsync();
         }}
         style={[styles.googleButton, (!request || isSigningIn) && styles.disabledButton]}
