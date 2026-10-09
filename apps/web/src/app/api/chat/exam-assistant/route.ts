@@ -30,13 +30,13 @@ export async function POST(request: NextRequest) {
       apiKey: process.env.GROQ_API_KEY,
     });
     const completion = await client.chat.completions.create({
-      model: "llama-3.3-70b-versatile",
+      model: "openai/gpt-oss-120b",
       temperature: 0.3,
       max_tokens: 500,
       messages: [
         {
           role: "system",
-          content: "You are an expert teacher assistant. Help refine exam questions and marking schemes.",
+          content: "You are an expert teacher assistant for E-Marker. Help teachers refine exam questions and create precise marking schemes.",
         },
         { role: "user", content: message },
       ],
