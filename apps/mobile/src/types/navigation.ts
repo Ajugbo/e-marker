@@ -32,6 +32,7 @@ export type MainTabParamList = {
 };
 
 export type RootStackParamList = {
+  Login: undefined;
   Main: NavigatorScreenParams<MainTabParamList> | undefined;
   Result: { result: ProcessingResult; rubricId: string };
 };

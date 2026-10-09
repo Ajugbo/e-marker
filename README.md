@@ -9,6 +9,12 @@ authorized redirect URIs, and set `GOOGLE_CLIENT_SECRET`. The web app uses
 Google's OAuth authorization-code flow with PKCE and stores its own signed
 session cookie.
 
+For mobile Google sign-in, configure `EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID`,
+`EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID`, and `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` in
+the mobile build environment. Set the corresponding `GOOGLE_ANDROID_CLIENT_ID`
+and `GOOGLE_IOS_CLIENT_ID` values in the web app environment as accepted token
+audiences. The web client ID must match `GOOGLE_CLIENT_ID`.
+
 ## Paystack payments
 
 Configure `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY` and `PAYSTACK_SECRET_KEY` in the web

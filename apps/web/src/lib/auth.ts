@@ -45,7 +45,9 @@ function readSessionToken(token: string): SessionClaims | null {
 }
 
 export async function getRequestUser(request: NextRequest) {
-  return getSessionUser(request.cookies.get(SESSION_COOKIE_NAME)?.value);
+  const authorization = request.headers.get("authorization");
+  const bearerToken = authorization?.match(/^Bearer\s+(\S+)$/i)?.[1];
+  return getSessionUser(bearerToken ?? request.cookies.get(SESSION_COOKIE_NAME)?.value);
 }
 
 export async function getSessionUser(token: string | undefined) {

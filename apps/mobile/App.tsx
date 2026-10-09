@@ -6,9 +6,11 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
+import * as SecureStore from 'expo-secure-store';
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { theme } from './src/constants/theme';
 
-// Import screens (placeholder for now)
+import LoginScreen from './src/screens/LoginScreen';
 import ScanScreen from './src/screens/ScanScreen';
 import UploadScreen from './src/screens/UploadScreen';
 import ResultsScreen from './src/screens/ResultsScreen';
@@ -59,17 +61,77 @@ function MainTabs() {
 }
 
 export default function App() {
+  const [isAuthenticated, setIsAuthenticated] = React.useState<boolean | null>(null);
+  const [authError, setAuthError] = React.useState('');
+
+  const checkAuthentication = React.useCallback(async () => {
+    setAuthError('');
+    try {
+      const token = await SecureStore.getItemAsync('userToken');
+      setIsAuthenticated(Boolean(token));
+    } catch (error) {
+      setAuthError(error instanceof Error ? error.message : 'Could not check your sign-in status.');
+    }
+  }, []);
+
+  React.useEffect(() => {
+    void checkAuthentication();
+  }, [checkAuthentication]);
+
   return (
     <QueryClientProvider client={queryClient}>
       <SafeAreaProvider>
         <StatusBar style="auto" />
-        <NavigationContainer>
-          <Stack.Navigator>
-            <Stack.Screen name="Main" component={MainTabs} options={{ headerShown: false }} />
-            <Stack.Screen name="Result" component={ResultScreen} options={{ title: 'Grading Result' }} />
-          </Stack.Navigator>
-        </NavigationContainer>
+        {isAuthenticated === null ? (
+          <View style={authStyles.container}>
+            {authError ? (
+              <>
+                <Text style={authStyles.errorText}>{authError}</Text>
+                <TouchableOpacity accessibilityRole="button" onPress={() => void checkAuthentication()}>
+                  <Text style={authStyles.retryText}>Try again</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <ActivityIndicator color={theme.colors.primary} size="large" />
+            )}
+          </View>
+        ) : (
+          <NavigationContainer>
+            <Stack.Navigator>
+              {isAuthenticated ? (
+                <>
+                  <Stack.Screen name="Main" component={MainTabs} options={{ headerShown: false }} />
+                  <Stack.Screen name="Result" component={ResultScreen} options={{ title: 'Grading Result' }} />
+                </>
+              ) : (
+                <Stack.Screen name="Login" options={{ headerShown: false }}>
+                  {() => <LoginScreen onAuthenticated={() => setIsAuthenticated(true)} />}
+                </Stack.Screen>
+              )}
+            </Stack.Navigator>
+          </NavigationContainer>
+        )}
       </SafeAreaProvider>
     </QueryClientProvider>
   );
 }
+
+const authStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+    backgroundColor: '#f8fafc',
+  },
+  errorText: {
+    marginBottom: 16,
+    color: '#b42318',
+    textAlign: 'center',
+  },
+  retryText: {
+    color: theme.colors.primary,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+});

@@ -6,6 +6,7 @@ const googleProfileSchema = z.object({
   email: z.email(),
   email_verified: z.union([z.string(), z.boolean()]).optional(),
   name: z.string().optional(),
+  picture: z.url().optional(),
   aud: z.string(),
   iss: z.string().optional(),
   nonce: z.string().optional(),
@@ -13,9 +14,10 @@ const googleProfileSchema = z.object({
 
 export async function verifyGoogleIdToken(
   credential: string,
-  clientId: string,
+  clientId: string | readonly string[],
   expectedNonce?: string,
 ) {
+  const clientIds = typeof clientId === "string" ? [clientId] : clientId;
   const tokenInfoUrl = new URL("https://oauth2.googleapis.com/tokeninfo");
   tokenInfoUrl.searchParams.set("id_token", credential);
   const googleResponse = await fetch(tokenInfoUrl, { cache: "no-store" });
@@ -24,7 +26,7 @@ export async function verifyGoogleIdToken(
   const profile = googleProfileSchema.safeParse(await googleResponse.json());
   if (
     !profile.success ||
-    profile.data.aud !== clientId ||
+    !clientIds.includes(profile.data.aud) ||
     (profile.data.iss !== undefined &&
       profile.data.iss !== "accounts.google.com" &&
       profile.data.iss !== "https://accounts.google.com") ||

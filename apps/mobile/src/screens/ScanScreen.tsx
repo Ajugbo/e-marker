@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as VideoThumbnails from 'expo-video-thumbnails';
+import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../constants/api';
 import { theme } from '../constants/theme';
 import type { ProcessingResult, RootStackParamList } from '../types/navigation';
@@ -40,7 +41,15 @@ export default function ScanScreen() {
 
     const loadRubrics = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/api/exams`, { credentials: 'include' });
+        const token = await SecureStore.getItemAsync('userToken');
+        if (!token) throw new Error('Please sign in again to load your grading rubrics.');
+        const response = await fetch(`${API_BASE_URL}/api/exams`, {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          credentials: 'include',
+        });
         const data = await response.json() as { exams?: unknown; error?: string };
         if (!response.ok) throw new Error(data.error ?? 'Could not load your grading rubrics.');
         if (!Array.isArray(data.exams)) throw new Error('The grading rubrics response was invalid.');
@@ -167,9 +176,14 @@ export default function ScanScreen() {
       await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
       const frames = await extractFrames();
       setStatusMessage('Sending pages for grading…');
+      const token = await SecureStore.getItemAsync('userToken');
+      if (!token) throw new Error('Please sign in again to process this scan.');
       const response = await fetch(`${API_BASE_URL}/api/grading/process`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
         credentials: 'include',
         body: JSON.stringify({ rubricId: selectedRubricId, frames }),
       });

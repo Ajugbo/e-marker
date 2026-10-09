@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NavigationProp, RouteProp } from '@react-navigation/native';
+import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../constants/api';
 import { theme } from '../constants/theme';
 import type { RootStackParamList, ScriptMetadata } from '../types/navigation';
@@ -32,9 +33,14 @@ export default function ResultScreen() {
     setIsSaving(true);
     setErrorMessage('');
     try {
+      const token = await SecureStore.getItemAsync('userToken');
+      if (!token) throw new Error('Please sign in again to save this grade.');
       const response = await fetch(`${API_BASE_URL}/api/grading/confirm`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
         credentials: 'include',
         body: JSON.stringify({
           rubricId: route.params.rubricId,
