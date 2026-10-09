@@ -39,7 +39,7 @@ ${message}`;
       apiKey: process.env.GROQ_API_KEY,
     });
     const completion = await client.chat.completions.create({
-      model: "llama3-8b-8192",
+      model: "meta-llama/llama-4-scout-17b-16e-instruct",
       temperature: 0.3,
       max_tokens: 500,
       messages: [
