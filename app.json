@@ -1,5 +1,14 @@
 {
   "expo": {
+    "scheme": "emarker",
+    "android": {
+      "package": "com.emarker.app",
+      "config": {
+        "googleSignIn": {
+          "certificateHash": "11:E8:15:28:B4:10:05:C9:DC:80:F2:CD:01:88:84:8B:5D:98:B5:1A"
+        }
+      }
+    },
     "extra": {
       "eas": {
         "projectId": "92d7e141-68ed-410f-ae18-684fa85cb815"
