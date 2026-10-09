@@ -45,6 +45,7 @@ export default function EditExamPage({ params }: { params: { id: string } }) {
   const [questions, setQuestions] = useState<EditableQuestion[]>([]);
   const [activeQuestionIndex, setActiveQuestionIndex] = useState<number | null>(null);
   const [activeQuestionText, setActiveQuestionText] = useState('');
+  const [activeMarkingScheme, setActiveMarkingScheme] = useState('');
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -142,6 +143,9 @@ export default function EditExamPage({ params }: { params: { id: string } }) {
     )));
     if (activeQuestionIndex === index && field === 'text') {
       setActiveQuestionText(value);
+    }
+    if (activeQuestionIndex === index && field === 'markingScheme') {
+      setActiveMarkingScheme(value);
     }
   };
 
@@ -303,6 +307,7 @@ export default function EditExamPage({ params }: { params: { id: string } }) {
                     onClick={() => {
                       setActiveQuestionIndex(index);
                       setActiveQuestionText(question.text);
+                      setActiveMarkingScheme(question.markingScheme);
                       setIsChatOpen(true);
                     }}
                     className="mt-2 text-sm font-semibold text-primary hover:underline"
@@ -318,6 +323,7 @@ export default function EditExamPage({ params }: { params: { id: string } }) {
         <ExamAssistantChat
           activeQuestionIndex={activeQuestionIndex}
           activeQuestionText={activeQuestionText}
+          activeMarkingScheme={activeMarkingScheme}
           examContext={{
             title: institution,
             subject,

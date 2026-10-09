@@ -19,6 +19,7 @@ interface ExamAssistantChatProps {
   examContext: ExamAssistantContext;
   activeQuestionIndex: number | null;
   activeQuestionText: string;
+  activeMarkingScheme: string;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
 }
@@ -27,6 +28,7 @@ export default function ExamAssistantChat({
   examContext,
   activeQuestionIndex,
   activeQuestionText,
+  activeMarkingScheme,
   isOpen,
   onOpenChange,
 }: ExamAssistantChatProps) {
@@ -43,13 +45,12 @@ export default function ExamAssistantChat({
     return () => window.cancelAnimationFrame(frame);
   }, [activeQuestionIndex, activeQuestionText, isOpen]);
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+  const handleSend = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const content = input.trim();
     if (!content || isSending) return;
 
-    const updatedMessages = [...messages, { role: 'user' as const, content }];
-    setMessages(updatedMessages);
+    setMessages((currentMessages) => [...currentMessages, { role: 'user', content }]);
     setInput('');
     setError('');
     setIsSending(true);
@@ -59,17 +60,19 @@ export default function ExamAssistantChat({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          messages: updatedMessages,
-          examContext: {
-            ...examContext,
-            ...(activeQuestionText ? { currentQuestionText: activeQuestionText } : {}),
+          message: content,
+          context: {
+            subject: examContext.subject,
+            question: activeQuestionText,
+            markingScheme: activeMarkingScheme,
           },
         }),
       });
       const data = (await response.json()) as { reply?: string; error?: string };
       if (!response.ok) throw new Error(data.error || 'Failed to contact the exam assistant.');
-      if (!data.reply) throw new Error('The exam assistant returned an invalid response.');
-      setMessages([...updatedMessages, { role: 'assistant', content: data.reply }]);
+      const reply = data.reply;
+      if (!reply) throw new Error('The exam assistant returned an invalid response.');
+      setMessages((currentMessages) => [...currentMessages, { role: 'assistant', content: reply }]);
     } catch (sendError) {
       setError(sendError instanceof Error ? sendError.message : 'Failed to contact the exam assistant.');
     } finally {
@@ -160,7 +163,7 @@ export default function ExamAssistantChat({
             </p>
           )}
 
-          <form onSubmit={handleSubmit} className="flex items-end gap-2">
+          <form onSubmit={handleSend} className="flex items-end gap-2">
             <label htmlFor="exam-assistant-input" className="sr-only">
               Message the AI Assistant
             </label>

@@ -7,32 +7,28 @@ import { ApiError, errorResponse, readJsonBody } from "@/lib/http";
 export const dynamic = "force-dynamic";
 
 const examAssistantSchema = z.object({
-  messages: z.array(z.object({
-    role: z.enum(["user", "assistant"]),
-    content: z.string().trim().min(1).max(5000),
-  }).strict()).min(1).max(40),
-  examContext: z.object({
-    title: z.string().trim().min(1).max(160),
-    subject: z.string().trim().min(1).max(160),
-    classLevel: z.string().trim().min(1).max(200),
-    rubric: z.string().max(20000).optional(),
-    currentQuestionText: z.string().max(5000).optional(),
+  message: z.string().trim().min(1).max(5000),
+  context: z.object({
+    subject: z.string().max(160),
+    question: z.string().max(5000),
+    markingScheme: z.string().max(20000),
   }).strict(),
 }).strict();
 
 const systemPrompt =
-  "You are an Exam Refinement Assistant. Your ONLY role is to help teachers structure exam questions, write precise rubrics, and create granular marking schemes. Reference the provided `examContext`. If `currentQuestionText` is provided, focus your marking scheme suggestions strictly on that specific question. Reject any off-topic requests (general chat, non-academic topics, personal advice). Keep responses concise, pedagogically sound, and formatted for easy copy-pasting into the exam editor.";
+  "You are an expert teacher. Suggest concise, pedagogically sound improvements or points to add to exam questions and marking schemes. Stay focused on the provided exam context.";
 
 export async function POST(request: NextRequest) {
   try {
     const user = await getRequestUser(request);
     if (!user) throw new ApiError("Please sign in to continue", 401);
 
-    const { messages, examContext } = await readJsonBody(request, examAssistantSchema);
+    const { message, context } = await readJsonBody(request, examAssistantSchema);
     if (!process.env.GROQ_API_KEY) {
       throw new ApiError("GROQ_API_KEY is not configured", 500);
     }
 
+    const prompt = `Based on this Subject: ${context.subject} and Question: ${context.question}, and the user's current Marking Scheme: ${context.markingScheme}, suggest improvements or points to add.\n\nTeacher's request: ${message}`;
     const client = new OpenAI({
       baseURL: "https://api.groq.com/openai/v1",
       apiKey: process.env.GROQ_API_KEY,
@@ -41,8 +37,7 @@ export async function POST(request: NextRequest) {
       model: "llama-3.1-70b-versatile",
       messages: [
         { role: "system", content: systemPrompt },
-        { role: "user", content: `Exam context: ${JSON.stringify(examContext)}` },
-        ...messages,
+        { role: "user", content: prompt },
       ],
     });
     const reply = completion.choices[0]?.message.content?.trim();
