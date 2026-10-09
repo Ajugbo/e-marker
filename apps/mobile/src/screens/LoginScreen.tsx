@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Image, Platform, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
 import * as Google from 'expo-auth-session/providers/google';
-import { makeRedirectUri, type AuthSessionResult } from 'expo-auth-session';
+import type { AuthSessionResult } from 'expo-auth-session';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../constants/api';
 import { theme } from '../constants/theme';
@@ -28,7 +28,6 @@ function GoogleSignIn({ onAuthenticated }: LoginScreenProps) {
     webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
     androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
     iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-    redirectUri: makeRedirectUri({ native: 'com.emarker.app:/oauthredirect' }),
   });
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
