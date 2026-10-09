@@ -38,6 +38,7 @@ export default function ExamAssistantChat({
   const [error, setError] = useState('');
   const [copiedMessage, setCopiedMessage] = useState<number | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -45,8 +46,13 @@ export default function ExamAssistantChat({
     return () => window.cancelAnimationFrame(frame);
   }, [activeQuestionIndex, activeQuestionText, isOpen]);
 
-  const handleSend = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  useEffect(() => {
+    if (isOpen) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
+  }, [isOpen, isSending, messages.length]);
+
+  const handleSend = async () => {
     const content = input.trim();
     if (!content || isSending) return;
 
@@ -78,6 +84,11 @@ export default function ExamAssistantChat({
     } finally {
       setIsSending(false);
     }
+  };
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    void handleSend();
   };
 
   const copyReply = async (content: string, index: number) => {
@@ -155,6 +166,7 @@ export default function ExamAssistantChat({
                 Thinking…
               </p>
             )}
+            <div ref={messagesEndRef} />
           </div>
 
           {error && (
@@ -163,7 +175,7 @@ export default function ExamAssistantChat({
             </p>
           )}
 
-          <form onSubmit={handleSend} className="flex items-end gap-2">
+          <form onSubmit={handleSubmit} className="flex items-end gap-2">
             <label htmlFor="exam-assistant-input" className="sr-only">
               Message the AI Assistant
             </label>
@@ -172,13 +184,20 @@ export default function ExamAssistantChat({
               ref={inputRef}
               value={input}
               onChange={(event) => setInput(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' && !event.shiftKey) {
+                  event.preventDefault();
+                  void handleSend();
+                }
+              }}
               maxLength={5000}
               rows={2}
               placeholder="Ask about a question, rubric, or marking scheme…"
               className="min-w-0 flex-1 resize-y rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
             />
             <button
-              type="submit"
+              type="button"
+              onClick={() => void handleSend()}
               disabled={!input.trim() || isSending}
               className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
