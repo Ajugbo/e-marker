@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Image, Platform, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
 import * as Google from 'expo-auth-session/providers/google';
+import { makeRedirectUri } from 'expo-auth-session';
 import type { AuthSessionResult } from 'expo-auth-session';
 import { API_BASE_URL } from '../constants/api';
 import { theme } from '../constants/theme';
@@ -24,10 +25,12 @@ type MobileLoginResponse = {
 const googleUserInfoUrl = 'https://openidconnect.googleapis.com/v1/userinfo';
 
 function GoogleSignIn({ onAuthenticated }: LoginScreenProps) {
+  const redirectUri = makeRedirectUri();
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
-    webClientId: '146885349224-j6ulre7mnjrvi80oq2hri7bvllta730q.apps.googleusercontent.com',
-    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
+    clientId: '146885349224-j6ulre7mnjrvi80oq2hri7bvllta730q.apps.googleusercontent.com',
+    androidClientId: '146885349224-1sgjlsvnm1hmbgm701kdbmmgp3s82nit.apps.googleusercontent.com',
     iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+    redirectUri,
   });
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
