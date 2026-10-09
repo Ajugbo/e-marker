@@ -25,7 +25,7 @@ const googleUserInfoUrl = 'https://openidconnect.googleapis.com/v1/userinfo';
 
 function GoogleSignIn({ onAuthenticated }: LoginScreenProps) {
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
-    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+    webClientId: '146885349224-j6ulre7mnjrvi80oq2hri7bvllta730q.apps.googleusercontent.com',
     androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
     iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
   });
