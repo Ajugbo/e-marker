@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Image, Platform, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
 import * as Google from 'expo-auth-session/providers/google';
+import * as AuthSession from 'expo-auth-session';
 import type { AuthSessionResult } from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
 import { API_BASE_URL } from '../constants/api';
@@ -18,14 +19,15 @@ type MobileLoginResponse = {
   error?: string;
 };
 
-const googleRedirectUri = 'https://fuzzy-bassoon-r4vgj9w4vj75c5gj-8081.app.github.dev';
-
 function GoogleSignIn({ onAuthenticated }: LoginScreenProps) {
+  const redirectUri = AuthSession.makeRedirectUri({
+    native: 'com.emarker.app://oauthredirect',
+  });
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
     clientId: '146885349224-ies7rf9mur3114a6chuue7hnq3tu8jto.apps.googleusercontent.com',
     androidClientId: '146885349224-1sgjlsvnm1hmbgm701kdbmmgp3s82nit.apps.googleusercontent.com',
     iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-    redirectUri: googleRedirectUri,
+    redirectUri,
   });
 
   useEffect(() => {
@@ -54,7 +56,7 @@ function GoogleSignIn({ onAuthenticated }: LoginScreenProps) {
     const nonce = Math.random().toString(36).substring(2);
     const parameters = new URLSearchParams({
       client_id: clientId,
-      redirect_uri: googleRedirectUri,
+      redirect_uri: redirectUri,
       response_type: 'id_token',
       scope: 'openid profile email',
       nonce,
