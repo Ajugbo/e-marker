@@ -14,9 +14,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm' # This speeds up the build by caching dependencies
 
-      - name: Install EAS CLI
-        run: npm install -g eas-cli
+      - name: Install dependencies
+        run: npm install # This installs all packages for the whole monorepo
 
       - name: Build APK
         run: |
@@ -24,3 +25,4 @@ jobs:
           eas build --platform android --profile production --non-interactive
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EAS_BUILD_NO_EXPO_GO_WARNING: "true" # Suppresses the Expo Go warning
