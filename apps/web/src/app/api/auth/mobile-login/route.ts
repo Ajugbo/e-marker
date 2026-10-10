@@ -2,7 +2,7 @@ import { prisma } from "@exam-marker/database";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createSessionToken } from "@/lib/auth";
-import { ApiError, errorResponse, readJsonBody } from "@/lib/http";
+import { ApiError, readJsonBody } from "@/lib/http";
 import { verifyGoogleIdToken } from "@/lib/google-auth";
 
 export const dynamic = "force-dynamic";
@@ -55,8 +55,10 @@ export async function POST(request: NextRequest) {
       { headers: corsHeaders },
     );
   } catch (error) {
-    const response = errorResponse(error, "auth/mobile-login");
-    response.headers.set("Access-Control-Allow-Origin", corsHeaders["Access-Control-Allow-Origin"]);
-    return response;
+    console.error("Mobile login failed:", error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Unknown error" },
+      { status: 500, headers: corsHeaders },
+    );
   }
 }
