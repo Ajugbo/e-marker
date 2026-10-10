@@ -1,6 +1,6 @@
 export const CREDIT_BUNDLES = {
-  STANDARD: { amount: 250_000, credits: 150 },
-  PREMIUM: { amount: 500_000, credits: 350 },
+  STANDARD: { amount: 499_900, credits: 150 },
+  PREMIUM: { amount: 999_900, credits: 300 },
   TOPUP: { amount: 50_000, credits: 20 },
 } as const;
 
