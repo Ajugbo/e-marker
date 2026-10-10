@@ -52,6 +52,25 @@ function GoogleSignIn({ onAuthenticated }: LoginScreenProps) {
   const [errorMessage, setErrorMessage] = useState('');
   const processedResponse = useRef<typeof response>(null);
 
+  const handleManualWebLogin = () => {
+    if (Platform.OS !== 'web') return;
+
+    const clientId = '146885349224-j6ulre7mnjrvi80oq2hri7bvllta730q.apps.googleusercontent.com';
+    const redirectUri = 'https://fuzzy-bassoon-r4vgj9w4vj75c5gj-8081.app.github.dev/';
+    const nonce = Math.random().toString(36).substring(2);
+    const parameters = new URLSearchParams({
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      response_type: 'id_token',
+      scope: 'openid profile email',
+      nonce,
+    });
+    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${parameters.toString()}`;
+
+    console.log('MANUAL AUTH URL:', authUrl);
+    window.open(authUrl, 'GoogleLogin', 'width=500,height=600,noopener,noreferrer');
+  };
+
   useEffect(() => {
     if (!response || processedResponse.current === response) return;
     processedResponse.current = response;
@@ -145,6 +164,15 @@ function GoogleSignIn({ onAuthenticated }: LoginScreenProps) {
           </>
         )}
       </TouchableOpacity>
+      {Platform.OS === 'web' && (
+        <TouchableOpacity
+          accessibilityRole="button"
+          onPress={handleManualWebLogin}
+          style={styles.manualWebButton}
+        >
+          <Text style={styles.manualWebButtonText}>Manual Web Login (Bypass Library)</Text>
+        </TouchableOpacity>
+      )}
       {!!errorMessage && <Text accessibilityRole="alert" style={styles.errorText}>{errorMessage}</Text>}
     </>
   );
@@ -163,7 +191,7 @@ export default function LoginScreen({ onAuthenticated }: LoginScreenProps) {
         <Image accessibilityLabel="E-Marker logo" source={require('../../assets/icon.png')} style={styles.logo} />
         <Text style={styles.title}>Welcome to E-Marker</Text>
         <Text style={styles.subtitle}>Sign in to access your rubrics and grade exams.</Text>
-        {platformClientId ? (
+        {platformClientId || Platform.OS === 'web' ? (
           <GoogleSignIn onAuthenticated={onAuthenticated} />
         ) : (
           <Text accessibilityRole="alert" style={styles.errorText}>
@@ -220,6 +248,20 @@ const styles = StyleSheet.create({
     borderColor: '#cbd5e1',
     borderRadius: 10,
     backgroundColor: '#fff',
+  },
+  manualWebButton: {
+    width: '100%',
+    minHeight: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 12,
+    borderRadius: 10,
+    backgroundColor: '#e2e8f0',
+  },
+  manualWebButtonText: {
+    color: '#334155',
+    fontSize: 14,
+    fontWeight: '600',
   },
   googleIcon: {
     marginRight: 10,
