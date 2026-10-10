@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Image, Platform, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
 import * as Google from 'expo-auth-session/providers/google';
-import { makeRedirectUri } from 'expo-auth-session';
 import type { AuthSessionResult } from 'expo-auth-session';
 import { API_BASE_URL } from '../constants/api';
 import { theme } from '../constants/theme';
@@ -23,14 +22,14 @@ type MobileLoginResponse = {
 };
 
 const googleUserInfoUrl = 'https://openidconnect.googleapis.com/v1/userinfo';
+const googleRedirectUri = 'https://fuzzy-bassoon-r4vgj9w4vj75c5gj-8081.app.github.dev';
 
 function GoogleSignIn({ onAuthenticated }: LoginScreenProps) {
-  const redirectUri = makeRedirectUri();
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
     clientId: '146885349224-ies7rf9mur3114a6chuue7hnq3tu8jto.apps.googleusercontent.com',
     androidClientId: '146885349224-1sgjlsvnm1hmbgm701kdbmmgp3s82nit.apps.googleusercontent.com',
     iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-    redirectUri,
+    redirectUri: googleRedirectUri,
   });
 
   useEffect(() => {
@@ -56,11 +55,10 @@ function GoogleSignIn({ onAuthenticated }: LoginScreenProps) {
     if (Platform.OS !== 'web') return;
 
     const clientId = '146885349224-ies7rf9mur3114a6chuue7hnq3tu8jto.apps.googleusercontent.com';
-    const redirectUri = 'https://fuzzy-bassoon-r4vgj9w4vj75c5gj-8081.app.github.dev/';
     const nonce = Math.random().toString(36).substring(2);
     const parameters = new URLSearchParams({
       client_id: clientId,
-      redirect_uri: redirectUri,
+      redirect_uri: googleRedirectUri,
       response_type: 'id_token',
       scope: 'openid profile email',
       nonce,
@@ -133,7 +131,7 @@ function GoogleSignIn({ onAuthenticated }: LoginScreenProps) {
         disabled={!request || isSigningIn}
         onPress={() => {
           setErrorMessage('');
-          console.log('REDIRECT URI GENERATED:', redirectUri);
+          console.log('REDIRECT URI CONFIGURED:', request?.redirectUri);
           const authorizationUrl = request?.url ? new URL(request.url) : null;
           const requestParameters = authorizationUrl
             ? Object.fromEntries(authorizationUrl.searchParams.entries())
