@@ -27,7 +27,7 @@ const googleUserInfoUrl = 'https://openidconnect.googleapis.com/v1/userinfo';
 function GoogleSignIn({ onAuthenticated }: LoginScreenProps) {
   const redirectUri = makeRedirectUri();
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
-    clientId: '146885349224-j6ulre7mnjrvi80oq2hri7bvllta730q.apps.googleusercontent.com',
+    clientId: '146885349224-ies7rf9mur3114a6chuue7hnq3tu8jto.apps.googleusercontent.com',
     androidClientId: '146885349224-1sgjlsvnm1hmbgm701kdbmmgp3s82nit.apps.googleusercontent.com',
     iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
     redirectUri,
@@ -55,7 +55,7 @@ function GoogleSignIn({ onAuthenticated }: LoginScreenProps) {
   const handleManualWebLogin = () => {
     if (Platform.OS !== 'web') return;
 
-    const clientId = '146885349224-j6ulre7mnjrvi80oq2hri7bvllta730q.apps.googleusercontent.com';
+    const clientId = '146885349224-ies7rf9mur3114a6chuue7hnq3tu8jto.apps.googleusercontent.com';
     const redirectUri = 'https://fuzzy-bassoon-r4vgj9w4vj75c5gj-8081.app.github.dev/';
     const nonce = Math.random().toString(36).substring(2);
     const parameters = new URLSearchParams({
