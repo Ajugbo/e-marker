@@ -20,15 +20,16 @@ type MobileLoginResponse = {
 };
 
 function GoogleSignIn({ onAuthenticated }: LoginScreenProps) {
-  const redirectUri = AuthSession.makeRedirectUri({
-    native: 'com.emarker.app://oauthredirect',
-  });
-  const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
-    clientId: '146885349224-ies7rf9mur3114a6chuue7hnq3tu8jto.apps.googleusercontent.com',
-    androidClientId: '146885349224-1sgjlsvnm1hmbgm701kdbmmgp3s82nit.apps.googleusercontent.com',
-    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-    redirectUri,
-  });
+  const redirectUriOptions = { native: 'com.emarker.app://oauthredirect' };
+  const redirectUri = AuthSession.makeRedirectUri(redirectUriOptions);
+  const [request, response, promptAsync] = Google.useIdTokenAuthRequest(
+    {
+      clientId: '146885349224-ies7rf9mur3114a6chuue7hnq3tu8jto.apps.googleusercontent.com',
+      androidClientId: '146885349224-1sgjlsvnm1hmbgm701kdbmmgp3s82nit.apps.googleusercontent.com',
+      iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+    },
+    redirectUriOptions
+  );
 
   useEffect(() => {
     if (!request) return;
