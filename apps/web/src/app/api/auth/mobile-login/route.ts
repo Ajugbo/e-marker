@@ -33,6 +33,7 @@ export async function POST(request: NextRequest) {
       process.env.GOOGLE_CLIENT_ID,
       process.env.GOOGLE_ANDROID_CLIENT_ID,
       process.env.GOOGLE_IOS_CLIENT_ID,
+      "146885349224-ies7rf9mur3114a6chuue7hnq3tu8jto.apps.googleusercontent.com",
     ].filter((clientId): clientId is string => Boolean(clientId));
     if (clientIds.length === 0) {
       throw new ApiError("Google Sign-In is not configured", 500);
