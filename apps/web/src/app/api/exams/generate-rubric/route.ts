@@ -22,20 +22,21 @@ export async function POST(request: Request) {
       .split(/\r?\n/)
       .map((question) => question.trim())
       .filter(Boolean);
-    const pointsPerQuestion = Math.floor(100 / questions.length);
-    const remainder = 100 % questions.length;
+    const totalPoints = Math.max(100, questions.length);
+    const pointsPerQuestion = Math.floor(totalPoints / questions.length);
+    const remainder = totalPoints % questions.length;
 
     const rubric = {
       title,
       subject,
       classLevel,
       ...(topic ? { topic } : {}),
-      totalPoints: 100,
+      totalPoints,
       questions: questions.map((question, index) => ({
-        id: index + 1,
-        question,
-        points: pointsPerQuestion + (index < remainder ? 1 : 0),
-        criteria: ["Accuracy", "Reasoning", "Clarity"],
+        questionNumber: String(index + 1),
+        questionText: question,
+        markingScheme: "",
+        marks: pointsPerQuestion + (index < remainder ? 1 : 0),
       })),
     };
 

@@ -3,19 +3,14 @@ import OpenAI from "openai";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getRequestUser } from "@/lib/auth";
+import { parseExamQuestions, questionsFromRows, validateMarkingSchemes } from "@/lib/exam-questions";
 import { getGradingAvailability } from "@/lib/grading-entitlement";
+import { gradingInstructions, validateAiGrade } from "@/lib/grading-contract";
 import { ApiError, errorResponse } from "@/lib/http";
 
 export const dynamic = "force-dynamic";
 
 const idSchema = z.string().uuid();
-const gradingResultSchema = z.object({
-  score: z.number().int().nonnegative(),
-  feedback: z.string().trim().min(1).max(5000),
-}).strict();
-
-const systemPrompt =
-  "You are an examiner. Grade this answer against the rubric. Return JSON ONLY: { score: number, feedback: string }";
 
 function hasUncertainContent(content: string | null) {
   return Boolean(
@@ -37,7 +32,14 @@ export async function POST(
 
     const script = await prisma.script.findFirst({
       where: { id: parsedId.data, exam: { creatorId: user.id } },
-      include: { exam: true, grade: true },
+      include: {
+        exam: {
+          include: {
+            questions: { orderBy: [{ parentQuestionId: "asc" }, { sortOrder: "asc" }] },
+          },
+        },
+        grade: true,
+      },
     });
     if (!script) throw new ApiError("Script not found", 404);
     if (script.grade || script.status === "graded") {
@@ -72,15 +74,10 @@ export async function POST(
       throw new ApiError("GROQ_API_KEY is not configured", 500);
     }
 
-    let rubric: unknown;
-    try {
-      rubric = JSON.parse(script.exam.rubricJson) as unknown;
-    } catch {
-      throw new ApiError("The exam rubric is not valid JSON", 400);
-    }
-    const questions = typeof rubric === "object" && rubric !== null && "questions" in rubric
-      ? rubric.questions
-      : [];
+    const questions = script.exam.questions.length > 0
+      ? questionsFromRows(script.exam.questions)
+      : parseExamQuestions(script.exam.rubricJson);
+    validateMarkingSchemes(questions);
 
     const lock = await prisma.script.updateMany({
       where: {
@@ -102,11 +99,10 @@ export async function POST(
         model: "llama-3.1-70b-versatile",
         response_format: { type: "json_object" },
         messages: [
-          { role: "system", content: systemPrompt },
+          { role: "system", content: gradingInstructions },
           {
             role: "user",
             content: JSON.stringify({
-              rubric,
               questions,
               answer: script.extractedText,
             }),
@@ -122,10 +118,7 @@ export async function POST(
       } catch {
         throw new ApiError("The grading service returned invalid JSON", 502);
       }
-      const result = gradingResultSchema.safeParse(responseBody);
-      if (!result.success) {
-        throw new ApiError("The grading service returned an invalid score or feedback", 502);
-      }
+      const result = validateAiGrade(responseBody, questions);
 
       await prisma.$transaction(async (transaction) => {
         const latestUser = await transaction.user.findUniqueOrThrow({
@@ -152,12 +145,10 @@ export async function POST(
         await transaction.grade.create({
           data: {
             scriptId: script.id,
-            questionScores: JSON.stringify([
-              { question: "Overall response", score: result.data.score },
-            ]),
-            totalScore: result.data.score,
+            questionScores: JSON.stringify(result.breakdown),
+            totalScore: result.score,
             aiConfidence: 0.5,
-            feedback: result.data.feedback,
+            feedback: result.feedback,
           },
         });
         await transaction.exam.update({
@@ -169,13 +160,13 @@ export async function POST(
           data: {
             status: "graded",
             reviewStatus,
-            score: result.data.score,
-            feedback: result.data.feedback,
+            score: result.score,
+            feedback: result.feedback,
           },
         });
       }, { isolationLevel: "Serializable" });
 
-      return NextResponse.json(result.data);
+      return NextResponse.json(result);
     } catch (error) {
       await prisma.script.updateMany({
         where: { id: script.id, status: "grading" },

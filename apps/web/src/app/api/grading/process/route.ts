@@ -2,6 +2,8 @@ import OpenAI from "openai";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getRequestUser } from "@/lib/auth";
+import { parseExamQuestions, questionsFromRows, validateMarkingSchemes } from "@/lib/exam-questions";
+import { aiGradeSchema, gradingInstructions, validateAiGrade } from "@/lib/grading-contract";
 import { ApiError, errorResponse, readJsonBody } from "@/lib/http";
 import { prisma } from "@exam-marker/database";
 
@@ -30,26 +32,8 @@ const metadataSchema = z.object({
   course: z.string().nullable(),
 }).strict();
 
-const breakdownItemSchema = z.object({
-  criterion: z.string().trim().min(1),
-  score: z.number().finite().nonnegative(),
-  maxScore: z.number().finite().nonnegative(),
-  feedback: z.string(),
-}).strict();
-
-const gradeSchema = z.object({
-  score: z.number().int().nonnegative(),
-  maxScore: z.number().finite().positive(),
-  feedback: z.string(),
-  breakdown: z.array(breakdownItemSchema),
-}).strict().refine((grade) => grade.score <= grade.maxScore, {
-  message: "score cannot exceed maxScore",
-});
-
 const metadataPrompt =
   "Extract ONLY this JSON from the exam header: {institution, class, term, studentName, examNumber, course}. Return valid JSON. Use null for fields that are absent.";
-const gradingPrompt =
-  "Grade this exam using the provided rubric. Return JSON: {score, maxScore, feedback, breakdown: [{criterion, score, maxScore, feedback}]}. Return valid JSON only.";
 
 function visionClient() {
   if (!process.env.GROQ_API_KEY) {
@@ -89,9 +73,15 @@ async function requestJson<T extends z.ZodType>(
   frames: { image: string }[],
   schema: T,
   context?: unknown,
+  systemPrompt?: string,
 ): Promise<z.infer<T>> {
   const content = [
-    { type: "text" as const, text: context === undefined ? prompt : `${prompt}\n\nRubric:\n${JSON.stringify(context)}` },
+    {
+      type: "text" as const,
+      text: context === undefined
+        ? prompt
+        : `${prompt}\n\nTeacher-provided questions and marking schemes:\n${JSON.stringify(context)}`,
+    },
     ...frames.map((frame) => ({
       type: "image_url" as const,
       image_url: { url: imageUrl(frame.image) },
@@ -100,7 +90,10 @@ async function requestJson<T extends z.ZodType>(
   const completion = await client.chat.completions.create({
     model: "meta-llama/llama-4-scout-17b-16e-instruct",
     response_format: { type: "json_object" },
-    messages: [{ role: "user", content }],
+    messages: [
+      ...(systemPrompt ? [{ role: "system" as const, content: systemPrompt }] : []),
+      { role: "user", content },
+    ],
     max_tokens: 4096,
   });
   const response = completion.choices[0]?.message.content;
@@ -130,16 +123,17 @@ export async function POST(request: NextRequest) {
 
     const rubricExam = await prisma.exam.findFirst({
       where: { id: data.rubricId, creatorId: user.id },
-      select: { rubricJson: true },
+      select: {
+        rubricJson: true,
+        questions: { orderBy: [{ parentQuestionId: "asc" }, { sortOrder: "asc" }] },
+      },
     });
     if (!rubricExam) throw new ApiError("Rubric not found", 404);
 
-    let rubric: unknown;
-    try {
-      rubric = JSON.parse(rubricExam.rubricJson) as unknown;
-    } catch {
-      throw new ApiError("The rubric is not valid JSON", 400);
-    }
+    const questions = rubricExam.questions.length > 0
+      ? questionsFromRows(rubricExam.questions)
+      : parseExamQuestions(rubricExam.rubricJson);
+    validateMarkingSchemes(questions);
 
     const metadataFrames = data.frames.filter((frame) => (frame.type ?? frame.pageType) === "metadata");
     const contentFrames = data.frames.filter((frame) => (frame.type ?? frame.pageType) === "content");
@@ -149,7 +143,15 @@ export async function POST(request: NextRequest) {
     const metadata = metadataFrames.length > 0
       ? await requestJson(client, metadataPrompt, metadataFrames, metadataSchema)
       : { institution: null, class: null, term: null, studentName: null, examNumber: null, course: null };
-    const grade = await requestJson(client, gradingPrompt, contentFrames, gradeSchema, rubric);
+    const gradeResponse = await requestJson(
+      client,
+      gradingInstructions,
+      contentFrames,
+      aiGradeSchema,
+      questions,
+      gradingInstructions,
+    );
+    const grade = validateAiGrade(gradeResponse, questions);
 
     return NextResponse.json({
       metadata: Object.fromEntries(

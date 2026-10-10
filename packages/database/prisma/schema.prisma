@@ -8,13 +8,13 @@ datasource db {
 }
 
 model User {
-  id                 String             @id @default(uuid())
-  email              String             @unique
-  name               String
-  role               String             @default("teacher")
-  credits            Int                @default(50)
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String
+  role      String   @default("teacher")
+  credits   Int      @default(50)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   exams               Exam[]
   transactions        CreditTransaction[]
@@ -34,10 +34,30 @@ model Exam {
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
-  creator User     @relation(fields: [creatorId], references: [id])
-  scripts Script[]
+  creator   User       @relation(fields: [creatorId], references: [id])
+  scripts   Script[]
+  questions Question[]
 
   @@map("exams")
+}
+
+model Question {
+  id               String  @id @default(cuid())
+  examId           String
+  parentQuestionId String?
+  questionNumber   String
+  questionText     String  @db.Text
+  markingScheme    String  @db.Text
+  marks            Int
+  sortOrder        Int     @default(0)
+
+  exam           Exam       @relation(fields: [examId], references: [id], onDelete: Cascade)
+  parentQuestion Question?  @relation("QuestionHierarchy", fields: [parentQuestionId], references: [id], onDelete: Cascade)
+  subQuestions   Question[] @relation("QuestionHierarchy")
+
+  @@unique([examId, questionNumber])
+  @@index([parentQuestionId, sortOrder])
+  @@map("questions")
 }
 
 model Script {

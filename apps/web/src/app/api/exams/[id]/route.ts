@@ -2,6 +2,7 @@ import { prisma } from "@exam-marker/database";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getRequestUser } from "@/lib/auth";
+import { parseExamQuestions, questionCreateRows, validateMarkingSchemes } from "@/lib/exam-questions";
 import { ApiError, errorResponse, readJsonBody } from "@/lib/http";
 
 export const dynamic = "force-dynamic";
@@ -53,6 +54,8 @@ export async function PATCH(
     const parsedId = idSchema.safeParse(params.id);
     if (!parsedId.success) throw new ApiError("Invalid exam ID");
     const data = await readJsonBody(request, updateExamSchema);
+    const questions = parseExamQuestions(data.rubricJson);
+    validateMarkingSchemes(questions);
 
     const existingExam = await prisma.exam.findFirst({
       where: { id: parsedId.data, creatorId: user.id },
@@ -60,10 +63,17 @@ export async function PATCH(
     });
     if (!existingExam) throw new ApiError("Exam not found", 404);
 
-    const exam = await prisma.exam.update({
-      where: { id: existingExam.id },
-      data: { title: data.title, rubricJson: data.rubricJson },
-      select: { id: true, title: true, rubricJson: true },
+    const exam = await prisma.$transaction(async (transaction) => {
+      await transaction.question.deleteMany({ where: { examId: existingExam.id } });
+      const updatedExam = await transaction.exam.update({
+        where: { id: existingExam.id },
+        data: { title: data.title, rubricJson: data.rubricJson },
+        select: { id: true, title: true, rubricJson: true },
+      });
+      await transaction.question.createMany({
+        data: questionCreateRows(questions, updatedExam.id),
+      });
+      return updatedExam;
     });
 
     return NextResponse.json({ exam });

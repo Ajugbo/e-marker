@@ -14,9 +14,11 @@ interface ExamResponse {
 }
 
 interface EditableQuestion {
+  questionNumber: string;
   text: string;
   markingScheme: string;
-  original: Record<string, unknown>;
+  marks: string;
+  parentQuestionNumber: string;
 }
 
 function getString(value: unknown) {
@@ -31,8 +33,38 @@ function getText(value: unknown) {
   return value === undefined || value === null ? '' : JSON.stringify(value, null, 2);
 }
 
+function getNumber(value: unknown) {
+  return typeof value === 'number' && Number.isSafeInteger(value) ? String(value) : '';
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function flattenQuestions(value: unknown, parentQuestionNumber = ''): EditableQuestion[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item, index) => {
+    if (!isRecord(item)) return [];
+    const fallbackNumber = parentQuestionNumber
+      ? `${parentQuestionNumber}${String.fromCharCode(97 + index)}`
+      : String(index + 1);
+    const questionNumber = getString(item.questionNumber)
+      || getString(item.number)
+      || getString(item.id)
+      || (typeof item.id === 'number' ? String(item.id) : '')
+      || fallbackNumber;
+    const ownParent = getString(item.parentQuestionNumber) || parentQuestionNumber;
+    return [
+      {
+        questionNumber,
+        text: getString(item.questionText) || getString(item.text) || getString(item.question),
+        markingScheme: getText(item.markingScheme ?? item.answerKey),
+        marks: getNumber(item.marks ?? item.points),
+        parentQuestionNumber: ownParent,
+      },
+      ...flattenQuestions(item.subQuestions ?? item.parts ?? item.children, questionNumber),
+    ];
+  });
 }
 
 export default function EditExamPage({ params }: { params: { id: string } }) {
@@ -70,15 +102,7 @@ export default function EditExamPage({ params }: { params: { id: string } }) {
           setSubject(getString(parsed.subject));
           setClassLevel(getString(parsed.classLevel));
           setTerm(getString(parsed.term));
-          const savedQuestions = Array.isArray(parsed.questions) ? parsed.questions : [];
-          setQuestions(savedQuestions.map((question): EditableQuestion => {
-            const original = isRecord(question) ? question : {};
-            return {
-              text: getString(original.text) || getString(original.question),
-              markingScheme: getText(original.markingScheme ?? original.criteria),
-              original,
-            };
-          }));
+          setQuestions(flattenQuestions(parsed.questions));
         } catch (parseError) {
           setError(parseError instanceof Error ? parseError.message : 'The saved rubric is invalid JSON.');
         }
@@ -103,10 +127,11 @@ export default function EditExamPage({ params }: { params: { id: string } }) {
 
     try {
       const updatedQuestions = questions.map((question) => ({
-        ...question.original,
-        text: question.text,
-        question: question.text,
+        questionNumber: question.questionNumber.trim(),
+        questionText: question.text.trim(),
         markingScheme: question.markingScheme,
+        marks: Number(question.marks),
+        parentQuestionNumber: question.parentQuestionNumber || null,
       }));
       const updatedRubric: Record<string, unknown> = {
         ...rubricFields,
@@ -137,7 +162,11 @@ export default function EditExamPage({ params }: { params: { id: string } }) {
     }
   };
 
-  const updateQuestion = (index: number, field: 'text' | 'markingScheme', value: string) => {
+  const updateQuestion = (
+    index: number,
+    field: keyof EditableQuestion,
+    value: string,
+  ) => {
     setQuestions((currentQuestions) => currentQuestions.map((question, questionIndex) => (
       questionIndex === index ? { ...question, [field]: value } : question
     )));
@@ -150,10 +179,11 @@ export default function EditExamPage({ params }: { params: { id: string } }) {
   };
 
   const persistedQuestions = questions.map((question) => ({
-    ...question.original,
-    text: question.text,
-    question: question.text,
+    questionNumber: question.questionNumber,
+    questionText: question.text,
     markingScheme: question.markingScheme,
+    marks: Number(question.marks),
+    parentQuestionNumber: question.parentQuestionNumber || null,
   }));
   const assistantRubric = JSON.stringify({
     ...rubricFields,
@@ -248,14 +278,20 @@ export default function EditExamPage({ params }: { params: { id: string } }) {
                 Questions and Marking Schemes
               </h2>
               <p className="mt-1 text-sm text-gray-600">
-                Edit each question and its marking scheme before saving.
+                Enter the teacher's exact scheme for each part. A parent question's marks must equal the sum of its sub-parts.
               </p>
             </div>
             <button
               type="button"
               onClick={() => setQuestions((currentQuestions) => [
                 ...currentQuestions,
-                { text: '', markingScheme: '', original: {} },
+                {
+                  questionNumber: String(currentQuestions.length + 1),
+                  text: '',
+                  markingScheme: '',
+                  marks: '1',
+                  parentQuestionNumber: '',
+                },
               ])}
               className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-semibold hover:bg-gray-50"
             >
@@ -271,7 +307,66 @@ export default function EditExamPage({ params }: { params: { id: string } }) {
 
           {questions.map((question, index) => (
             <article key={index} className="space-y-4 rounded-lg border border-gray-200 p-4">
-              <h3 className="font-semibold text-gray-800">Question {index + 1}</h3>
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-gray-800">
+                  {question.parentQuestionNumber ? `Part ${question.questionNumber}` : `Question ${question.questionNumber}`}
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setQuestions((current) => current.filter((_, itemIndex) => itemIndex !== index))}
+                  className="text-sm font-semibold text-red-700 hover:underline"
+                >
+                  Remove
+                </button>
+              </div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <div>
+                  <label htmlFor={`question-number-${index}`} className="mb-2 block text-sm font-medium text-gray-700">
+                    Question number
+                  </label>
+                  <input
+                    id={`question-number-${index}`}
+                    required
+                    maxLength={24}
+                    value={question.questionNumber}
+                    onChange={(event) => updateQuestion(index, 'questionNumber', event.target.value)}
+                    className="w-full rounded-md border border-gray-300 px-3 py-2"
+                  />
+                </div>
+                <div>
+                  <label htmlFor={`question-parent-${index}`} className="mb-2 block text-sm font-medium text-gray-700">
+                    Parent question (optional)
+                  </label>
+                  <select
+                    id={`question-parent-${index}`}
+                    value={question.parentQuestionNumber}
+                    onChange={(event) => updateQuestion(index, 'parentQuestionNumber', event.target.value)}
+                    className="w-full rounded-md border border-gray-300 px-3 py-2"
+                  >
+                    <option value="">No parent (top-level question)</option>
+                    {questions.filter((_, itemIndex) => itemIndex !== index).map((parent) => (
+                      <option key={parent.questionNumber} value={parent.questionNumber}>
+                        {parent.questionNumber}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor={`question-marks-${index}`} className="mb-2 block text-sm font-medium text-gray-700">
+                    Marks
+                  </label>
+                  <input
+                    id={`question-marks-${index}`}
+                    type="number"
+                    min={1}
+                    step={1}
+                    required
+                    value={question.marks}
+                    onChange={(event) => updateQuestion(index, 'marks', event.target.value)}
+                    className="w-full rounded-md border border-gray-300 px-3 py-2"
+                  />
+                </div>
+              </div>
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                 <div>
                   <label
@@ -316,6 +411,22 @@ export default function EditExamPage({ params }: { params: { id: string } }) {
                   </button>
                 </div>
               </div>
+              <button
+                type="button"
+                onClick={() => setQuestions((current) => [
+                  ...current,
+                  {
+                    questionNumber: `${question.questionNumber}a`,
+                    text: '',
+                    markingScheme: '',
+                    marks: '1',
+                    parentQuestionNumber: question.questionNumber,
+                  },
+                ])}
+                className="text-sm font-semibold text-primary hover:underline"
+              >
+                Add sub-part under {question.questionNumber}
+              </button>
             </article>
           ))}
         </section>

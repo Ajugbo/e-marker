@@ -20,6 +20,7 @@ const gradeSchema = z.object({
   maxScore: z.number().finite().positive(),
   feedback: z.string().max(5000),
   breakdown: z.array(z.object({
+    questionNumber: z.string().trim().min(1).optional(),
     criterion: z.string().trim().min(1).max(200),
     score: z.number().finite().nonnegative(),
     maxScore: z.number().finite().nonnegative(),

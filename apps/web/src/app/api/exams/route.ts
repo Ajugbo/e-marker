@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@exam-marker/database";
 import { z } from "zod";
 import { getRequestUser } from "@/lib/auth";
+import { parseExamQuestions, questionCreateRows, validateMarkingSchemes } from "@/lib/exam-questions";
 import { ApiError, errorResponse, readJsonBody } from "@/lib/http";
 
 export const dynamic = "force-dynamic";
@@ -43,13 +44,21 @@ export async function POST(request: NextRequest) {
     const user = await getRequestUser(request);
     if (!user) throw new ApiError("Please sign in to continue", 401);
     const data = await readJsonBody(request, createExamSchema);
+    const questions = parseExamQuestions(data.rubricJson);
+    validateMarkingSchemes(questions);
 
-    const exam = await prisma.exam.create({
-      data: {
-        title: data.title,
-        rubricJson: data.rubricJson,
-        creatorId: user.id,
-      },
+    const exam = await prisma.$transaction(async (transaction) => {
+      const createdExam = await transaction.exam.create({
+        data: {
+          title: data.title,
+          rubricJson: data.rubricJson,
+          creatorId: user.id,
+        },
+      });
+      await transaction.question.createMany({
+        data: questionCreateRows(questions, createdExam.id),
+      });
+      return createdExam;
     });
 
     return NextResponse.json(
