@@ -9,9 +9,6 @@ export const dynamic = "force-dynamic";
 
 const mobileLoginSchema = z.object({
   credential: z.string().min(1, "Google credential is required"),
-  email: z.email(),
-  name: z.string().trim().min(1).max(200),
-  picture: z.url().optional(),
 }).strict();
 
 export async function POST(request: NextRequest) {
@@ -27,11 +24,7 @@ export async function POST(request: NextRequest) {
     }
 
     const profile = await verifyGoogleIdToken(data.credential, clientIds);
-    if (profile.email.toLowerCase() !== data.email.toLowerCase()) {
-      throw new ApiError("Google account could not be verified", 401);
-    }
-
-    const name = profile.name || data.name || profile.email.split("@")[0];
+    const name = profile.name || profile.email.split("@")[0];
     const user = await prisma.user.upsert({
       where: { email: profile.email },
       create: { email: profile.email, name },

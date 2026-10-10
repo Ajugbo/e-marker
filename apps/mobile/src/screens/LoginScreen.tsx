@@ -10,18 +10,11 @@ type LoginScreenProps = {
   onAuthenticated: () => void;
 };
 
-type GoogleProfile = {
-  email?: unknown;
-  name?: unknown;
-  picture?: unknown;
-};
-
 type MobileLoginResponse = {
   token?: unknown;
   error?: string;
 };
 
-const googleUserInfoUrl = 'https://openidconnect.googleapis.com/v1/userinfo';
 const googleRedirectUri = 'https://fuzzy-bassoon-r4vgj9w4vj75c5gj-8081.app.github.dev';
 
 function GoogleSignIn({ onAuthenticated }: LoginScreenProps) {
@@ -72,37 +65,31 @@ function GoogleSignIn({ onAuthenticated }: LoginScreenProps) {
   useEffect(() => {
     if (!response || processedResponse.current === response) return;
     processedResponse.current = response;
-    if (response.type !== 'success') return;
+    if (response.type !== 'success') {
+      if (response.type === 'error') console.error('LOGIN ERROR:', response.error);
+      return;
+    }
 
     const completeSignIn = async (result: AuthSessionResult) => {
       if (result.type !== 'success') return;
+      console.log('LOGIN SUCCESS RESPONSE:', {
+        type: result.type,
+        params: Object.keys(result.params),
+        authentication: result.authentication
+          ? Object.keys(result.authentication)
+          : [],
+        hasIdToken: Boolean(result.authentication?.idToken ?? result.params.id_token),
+      });
       setIsSigningIn(true);
       setErrorMessage('');
       try {
         const credential = result.authentication?.idToken ?? result.params.id_token;
-        const accessToken = result.authentication?.accessToken ?? result.params.access_token;
-        if (!credential || !accessToken) {
-          throw new Error('Google did not return the credentials needed to sign in.');
-        }
-
-        const profileResponse = await fetch(googleUserInfoUrl, {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        });
-        if (!profileResponse.ok) throw new Error('Could not retrieve your Google profile.');
-        const profile = await profileResponse.json() as GoogleProfile;
-        if (typeof profile.email !== 'string' || typeof profile.name !== 'string') {
-          throw new Error('Google did not return a valid account profile.');
-        }
+        if (!credential) throw new Error('Google did not return an ID token.');
 
         const loginResponse = await fetch(`${API_BASE_URL}/api/auth/mobile-login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            credential,
-            email: profile.email,
-            name: profile.name,
-            ...(typeof profile.picture === 'string' ? { picture: profile.picture } : {}),
-          }),
+          body: JSON.stringify({ credential }),
         });
         const loginResult = await loginResponse.json() as MobileLoginResponse;
         if (!loginResponse.ok) {
