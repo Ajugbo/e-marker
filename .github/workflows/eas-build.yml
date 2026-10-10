@@ -1,7 +1,7 @@
 name: EAS Android Build
 
 on:
-  workflow_dispatch: # This allows you to click a button to run it manually
+  workflow_dispatch:
 
 jobs:
   build:
@@ -14,10 +14,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm' # This speeds up the build by caching dependencies
+          cache: 'npm'
 
-      - name: Install dependencies
-        run: npm install # This installs all packages for the whole monorepo
+      - name: Install project dependencies
+        run: npm install
+
+      - name: Install EAS CLI
+        run: npm install -g eas-cli
 
       - name: Build APK
         run: |
@@ -25,4 +28,4 @@ jobs:
           eas build --platform android --profile production --non-interactive
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-          EAS_BUILD_NO_EXPO_GO_WARNING: "true" # Suppresses the Expo Go warning
+          EAS_BUILD_NO_EXPO_GO_WARNING: "true"
