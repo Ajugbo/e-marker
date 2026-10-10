@@ -32,6 +32,22 @@ function GoogleSignIn({ onAuthenticated }: LoginScreenProps) {
     iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
     redirectUri,
   });
+
+  useEffect(() => {
+    if (!request) return;
+
+    console.log('--- AuthRequest Object Loaded ---');
+    console.log('Client ID configured:', request.clientId);
+    console.log('Redirect URI configured:', request.redirectUri);
+    if (!request.url) {
+      console.error('AuthRequest loaded without a generated authorization URL.');
+      return;
+    }
+
+    console.log('=== FULL GENERATED GOOGLE OAUTH URL ===');
+    console.log(request.url);
+  }, [request]);
+
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const processedResponse = useRef<typeof response>(null);
