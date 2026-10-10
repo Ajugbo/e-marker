@@ -7,24 +7,9 @@ import { verifyGoogleIdToken } from "@/lib/google-auth";
 
 export const dynamic = "force-dynamic";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "https://fuzzy-bassoon-r4vgj9w4vj75c5gj-8081.app.github.dev",
-};
-
 const mobileLoginSchema = z.object({
   credential: z.string().min(1, "Google credential is required"),
 }).strict();
-
-export async function OPTIONS() {
-  return new NextResponse(null, {
-    status: 204,
-    headers: {
-      ...corsHeaders,
-      "Access-Control-Allow-Methods": "POST, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type, Authorization",
-    },
-  });
-}
 
 export async function POST(request: NextRequest) {
   try {
@@ -47,18 +32,15 @@ export async function POST(request: NextRequest) {
       update: { name },
     });
 
-    return NextResponse.json(
-      {
-        token: createSessionToken(user.id),
-        user: { id: user.id, email: user.email, name: user.name },
-      },
-      { headers: corsHeaders },
-    );
+    return NextResponse.json({
+      token: createSessionToken(user.id),
+      user: { id: user.id, email: user.email, name: user.name },
+    });
   } catch (error) {
     console.error("Mobile login failed:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      { status: 500, headers: corsHeaders },
+      { status: 500 },
     );
   }
 }
