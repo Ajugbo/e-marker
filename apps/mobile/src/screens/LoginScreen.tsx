@@ -2,9 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 import { Image, Platform, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
 import * as Google from 'expo-auth-session/providers/google';
 import type { AuthSessionResult } from 'expo-auth-session';
+import * as WebBrowser from 'expo-web-browser';
 import { API_BASE_URL } from '../constants/api';
 import { theme } from '../constants/theme';
 import { setUserToken } from '../utils/tokenStorage';
+
+WebBrowser.maybeCompleteAuthSession();
 
 type LoginScreenProps = {
   onAuthenticated: () => void;
