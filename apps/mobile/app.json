@@ -2,7 +2,7 @@
   "expo": {
     "name": "E-Marker",
     "slug": "mobile",
-    "scheme": ["emarker", "com.emarker.app"],
+    "scheme": "emarker",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -11,6 +11,7 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.emarker.app",
       "permissions": [
         "android.permission.RECORD_AUDIO",
         "android.permission.CAMERA"
@@ -24,8 +25,7 @@
           "certificateHash": "11:E8:15:28:B4:10:05:C9:DC:80:F2:CD:01:88:84:8B:5D:98:B5:1A"
         }
       },
-      "predictiveBackGestureEnabled": false,
-      "package": "com.emarker.app"
+      "predictiveBackGestureEnabled": false
     },
     "plugins": [
       [
