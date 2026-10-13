@@ -21,10 +21,9 @@ type MobileLoginResponse = {
 
 function GoogleSignIn({ onAuthenticated }: LoginScreenProps) {
   // FIX: Using the exact package name format with a single slash for Android
-  const redirectUri = AuthSession.makeRedirectUri({
-    native: 'com.emarker.app:/oauthredirect',
-  });
-
+    const redirectUri = AuthSession.makeRedirectUri({
+     native: 'emarker://oauthredirect',
+   });
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest(
     {
       clientId: '146885349224-ies7rf9mur3114a6chuue7hnq3tu8jto.apps.googleusercontent.com',
