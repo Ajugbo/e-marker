@@ -20,11 +20,7 @@
         "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/icon.png"
       },
-      "config": {
-        "googleSignIn": {
-             "certificateHash": "11E81528B41005C9DC80F2CD0188848B5D98B51A"
-        }
-      },
+      
       "predictiveBackGestureEnabled": false
     },
     "plugins": [
