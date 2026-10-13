@@ -22,7 +22,7 @@
       },
       "config": {
         "googleSignIn": {
-          "certificateHash": "11:E8:15:28:B4:10:05:C9:DC:80:F2:CD:01:88:84:8B:5D:98:B5:1A"
+             "certificateHash": "11E81528B41005C9DC80F2CD0188848B5D98B51A"
         }
       },
       "predictiveBackGestureEnabled": false
