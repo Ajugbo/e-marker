@@ -173,10 +173,11 @@ function GoogleSignIn({ onAuthenticated }: LoginScreenProps) {
 }
 
 export default function LoginScreen({ onAuthenticated }: LoginScreenProps) {
+  // HARDCODED to ensure they are present in the standalone APK after the project transfer
   const platformClientId = Platform.select({
-    android: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
+    android: '146885349224-1sgjlsvnm1hmbgm701kdbmmgp3s82nit.apps.googleusercontent.com',
     ios: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-    default: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+    default: '146885349224-ies7rf9mur3114a6chuue7hnq3tu8jto.apps.googleusercontent.com',
   });
 
   return (
@@ -197,7 +198,6 @@ export default function LoginScreen({ onAuthenticated }: LoginScreenProps) {
     </View>
   );
 }
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
